@@ -511,6 +511,7 @@ function Table({
                 addToSimilarInputPapers, 
                 addToSavedPapers,
                 checkoutPapers,
+                summarizePapers,
                 addToSelectNodeIDs,
                 isInSimilarInputPapers, 
                 isInSavedPapers,
@@ -792,39 +793,39 @@ function Table({
 
         if(tableControls.indexOf("delete") !== -1){
             deleteColumn = {
-                id: 'delete',
-                // Make this column a groupByBoundary. This ensures that groupBy columns
-                // are placed after it
-                groupByBoundary: true,
-                // The header can use the table's getToggleAllRowsSelectedProps method
-                // to render a checkbox
-                Header: () => (<>
-                  <span>Delete</span><br/>
-                  <TooltipHost
-                    delay={TooltipDelay.zero}
-                    content={<span style={{fontSize: 16}}>Remove/Delete the paper.</span>}
-                    id="tooltip-delete"
-                    directionalHint={DirectionalHint.leftCenter}
-                    styles={hostStyles}
+              id: 'delete',
+              // Make this column a groupByBoundary. This ensures that groupBy columns
+              // are placed after it
+              groupByBoundary: true,
+              // The header can use the table's getToggleAllRowsSelectedProps method
+              // to render a checkbox
+              Header: () => (<>
+                <span>Delete</span><br/>
+                <TooltipHost
+                  delay={TooltipDelay.zero}
+                  content={<span style={{fontSize: 16}}>Remove/Delete the paper.</span>}
+                  id="tooltip-delete"
+                  directionalHint={DirectionalHint.leftCenter}
+                  styles={hostStyles}
+                  >
+                  <Icon styles={{root: {fontSize: 12}}} iconName="Question" aria-describedby="tooltip-delete"></Icon>
+                </TooltipHost>
+              </>),
+              // The cell can use the individual row's getToggleRowSelectedProps method
+              // to the render a checkbox
+              Cell: ({ row, column, cell }: any) => (
+                cell.isAggregated ? <></> : <div className="text-center">
+                  <IconButton 
+                    iconProps={{iconName:"Delete"}} 
+                    onClick={() => {deleteRow(row.index)}}
+                    className="iconButton"
                     >
-                    <Icon styles={{root: {fontSize: 12}}} iconName="Question" aria-describedby="tooltip-delete"></Icon>
-                  </TooltipHost>
-                </>),
-                // The cell can use the individual row's getToggleRowSelectedProps method
-                // to the render a checkbox
-                Cell: ({ row, column, cell }: any) => (
-                  cell.isAggregated ? <></> : <div className="text-center">
-                    <IconButton 
-                      iconProps={{iconName:"Delete"}} 
-                      onClick={() => {deleteRow(row.index)}}
-                      className="iconButton"
-                      >
-                      </IconButton>
-                    </div>
-                ),
-                width: 20,
-                maxWidth: 20,
-                minWidth: 20
+                    </IconButton>
+                  </div>
+              ),
+              width: 20,
+              maxWidth: 20,
+              minWidth: 20
             }
             afterColumns.push(deleteColumn); 
         }
@@ -1106,6 +1107,17 @@ function Table({
                     {' '}
                   </>
                   : null}
+                  {tableControls.indexOf("summarize") !== -1 ?
+                  <>
+                    <PrimaryButton 
+                      onClick={summarizePapers}
+                      text="Summarize"
+                      allowDisabledFocus
+                      styles={{root: {padding:0, minWidth: 0, display: "inline-block", verticalAlign: "top"}}}
+                    ></PrimaryButton>
+                    {' '}
+                  </>
+                  : null}
                   {tableControls.indexOf("export") !== -1 ?
                   <>
                     <PrimaryButton 
@@ -1167,7 +1179,7 @@ function Table({
         <VariableSizeList
           ref={listRef}
           key={"ID"}
-          height={tableType == "saved" ? 500 : 235}
+          height={tableType == "saved" ? 350 : 235}
           itemCount={rows.length}
           itemSize={(index) => 40}
           itemKey={(index) => index }
@@ -1210,6 +1222,7 @@ export interface SmartTableProps {
   isInSavedPapers?: Function;
   updateVisibleColumns: Function;
   checkoutPapers?: Function;
+  summarizePapers?: Function;
   embeddingType: string;
   hasEmbeddings: Function;
   openGScholar?: Function;
@@ -1218,7 +1231,12 @@ export interface SmartTableProps {
 
 export const SmartTable: React.FC<{props: SmartTableProps}> = observer(({props}) => {
     let {
-        tableData, dataFiltered, tableType, tableControls, columnIds, isInSimilarInputPapers, isInSavedPapers, addToSimilarInputPapers, addToSavedPapers, deleteRow, columnWidths, columnFilterTypes, updateVisibleColumns, columnsVisible, updateColumnFilterValues, columnFilterValues, setFilteredPapers, updateColumnSortByValues, columnSortByValues, globalFilterValue, updateGlobalFilterValue, scrollToPaperID, addToSelectNodeIDs, checkoutPapers, embeddingType, hasEmbeddings, openGScholar, isInSelectedNodeIDs
+        tableData, dataFiltered, tableType, tableControls, columnIds, isInSimilarInputPapers, 
+        isInSavedPapers, addToSimilarInputPapers, addToSavedPapers, deleteRow, columnWidths, 
+        columnFilterTypes, updateVisibleColumns, columnsVisible, updateColumnFilterValues, 
+        columnFilterValues, setFilteredPapers, updateColumnSortByValues, columnSortByValues, 
+        globalFilterValue, updateGlobalFilterValue, scrollToPaperID, addToSelectNodeIDs, 
+        checkoutPapers, summarizePapers, embeddingType, hasEmbeddings, openGScholar, isInSelectedNodeIDs
     } = props;
 
     const data = tableData[tableType];
@@ -1278,6 +1296,7 @@ export const SmartTable: React.FC<{props: SmartTableProps}> = observer(({props})
             setFilteredPapers={setFilteredPapers}
             dataFiltered={dataFiltered}
             checkoutPapers={checkoutPapers}
+            summarizePapers={summarizePapers}
             openGScholar={openGScholar}
         />
         </Styles>

@@ -96,11 +96,17 @@ interface AppState {
   // Will not change
   columnWidths: {};
   columnFilterTypes: {};
+  chatText: string;
+  chatResponse: string;
+  chatResponsing: boolean;
+  chatDoc: Array<any>;
+  summarizeResponse: string;
 }
 
 const embeddingTypeDropdownOptions = [
   { key: 'specter', text: 'Specter' },
-  { key: 'glove', text: 'Glove' }
+  { key: 'glove', text: 'Glove' },
+  { key: 'ada', text: 'Ada' }
 ];
 
 const similarityTypeDropdownOptions = [
@@ -245,7 +251,12 @@ class App extends React.Component<{}, AppState> {
       searchByAbstractLimit: maxSimilarPapersDropdownOptions[0],
       checkoutLinkRef: React.createRef(),
       scrollToPaperID: 0,
-      paperNoEmbeddings: {}
+      paperNoEmbeddings: {},
+      chatText: '',
+      chatResponse: '',
+      chatResponsing: false,
+      chatDoc: [],
+      summarizeResponse: ''
     }
   }
 
@@ -275,7 +286,8 @@ class App extends React.Component<{}, AppState> {
         const _dataAll = JSON.parse(data);
         const _paperNoEmbeddings = {
           "specter": [],
-          "glove": []
+          "glove": [],
+          "ada": []
         }
         _dataAll.forEach(_d => {
           if (!("specter_umap" in _d && Array.isArray(_d["specter_umap"]) && _d["specter_umap"].length == 2)) {
@@ -284,10 +296,14 @@ class App extends React.Component<{}, AppState> {
           if (!("glove_umap" in _d && Array.isArray(_d["glove_umap"]) && _d["glove_umap"].length == 2)) {
             _paperNoEmbeddings["glove"].push(_d["ID"]);
           }
+          if (!("ada_umap" in _d && Array.isArray(_d["ada_umap"]) && _d["ada_umap"].length == 2)) {
+            _paperNoEmbeddings["ada"].push(_d["ID"]);
+          }
         });
 
         parent.updateStateProp("paperNoEmbeddings", _paperNoEmbeddings["glove"], "glove");
         parent.updateStateProp("paperNoEmbeddings", _paperNoEmbeddings["specter"], "specter");
+        parent.updateStateProp("paperNoEmbeddings", _paperNoEmbeddings["ada"], "ada");
         parent.setState({
           "dataAll": _dataAll,
           "spinner": false
@@ -483,6 +499,7 @@ class App extends React.Component<{}, AppState> {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          "embedding": this.state.embeddingType.key,
           "input_data": {
             "title": this.state.searchTitle,
             "abstract": this.state.searchAbstract
@@ -526,6 +543,70 @@ class App extends React.Component<{}, AppState> {
             "similarityPanelSelectedKey": String(2) // Redirect to the `Output Similar` tab.
           });
         });
+    }
+
+    const chatRequest = () => {
+      this.setState({chatResponse: 'RUNNING ... ...'})
+      this.setState({chatResponsing: true})
+      fetch(`${baseUrl}chat`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({text: this.state.chatText})
+      }).then(response => {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let partial = '';
+        this.setState({chatResponse: ''})
+      
+        const readChunk = ({ done, value }) => {
+          if (done) {
+            if (partial) {
+              this.setState({chatResponse: `${this.state.chatResponse}${partial}`})
+            }
+            this.setState({chatResponsing: false})
+            return;
+          }
+          partial += decoder.decode(value);
+          const lines = partial.split('\n');
+          partial = lines.pop();
+          for (const line of lines) {
+            this.setState({chatResponse: `${this.state.chatResponse}${line}`})
+          }
+          reader.read().then(readChunk) // Call readChunk recursively with next chunk
+        }
+        reader.read().then(readChunk)
+      })
+    }
+
+    const summarizePapers = () => {
+      this.setState({summarizeResponse: 'SUMMARIZING ... ...'})
+      fetch(`${baseUrl}summarize`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ids: this.state.dataSavedID})
+      }).then(response => {
+        const reader = response.body.getReader()
+        const decoder = new TextDecoder('utf-8')
+        let partial = ''
+        this.setState({summarizeResponse: ''})
+      
+        const readChunk = ({ done, value }) => {
+          if (done) {
+            if (partial) {
+              this.setState({summarizeResponse: `${this.state.summarizeResponse}${partial}`})
+            }
+            return
+          }
+          partial += decoder.decode(value)
+          const lines = partial.split('\n')
+          partial = lines.pop()
+          for (const line of lines) {
+            this.setState({summarizeResponse: `${this.state.summarizeResponse}${line}`})
+          }
+          reader.read().then(readChunk)
+        }
+        reader.read().then(readChunk)
+      })
     }
 
     const yearTableProps: SmartTableProps = {
@@ -797,7 +878,7 @@ class App extends React.Component<{}, AppState> {
       setFilteredPapers: (dataFiltered) => { this.updateStateProp("dataFiltered", dataFiltered, "saved") },
       dataFiltered: this.state.dataFiltered["saved"],
       columnWidths: this.state.columnWidths,
-      tableControls: ["add", "delete", "info", "locate", "export"],
+      tableControls: ["add", "delete", "info", "locate", "summarize", "export"],
       columnIds: this.state.columns["saved"],
       deleteRow: (rowId) => { deleteRows("dataSaved", rowId); deleteRows("dataSavedID", rowId); },
       addToSimilarInputPapers: addToSimilarInputPapers,
@@ -805,6 +886,7 @@ class App extends React.Component<{}, AppState> {
       isInSimilarInputPapers: isInSimilarInputPapers,
       isInSavedPapers: isInSavedPapers,
       checkoutPapers: checkoutPapers,
+      summarizePapers: summarizePapers,
       openGScholar: openGScholar,
       isInSelectedNodeIDs: isInSelectedNodeIDs,
     }
@@ -815,6 +897,10 @@ class App extends React.Component<{}, AppState> {
 
     const onChangeSearchAbstract = (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newText: string): void => {
       this.setState({ searchAbstract: newText })
+    };
+
+    const onChangeChatText = (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newText: string): void => {
+      this.setState({ chatText: newText })
     };
 
     const updateYearsCounts = (papers) => {
@@ -1136,7 +1222,8 @@ class App extends React.Component<{}, AppState> {
           >
             <br />
             <a ref={this.state.checkoutLinkRef}></a>
-            <SmartTable props={savedPapersTableProps}></SmartTable>
+            <SmartTable props={savedPapersTableProps} ></SmartTable>
+            <div style={{ fontSize: '1.25em', lineHeight: '1.25em'}}> {this.state.summarizeResponse} </div>
           </Panel>
           <div className="m-t-md p-md">
             <SmartTable props={allPapersTableProps}></SmartTable>
@@ -1200,7 +1287,8 @@ class App extends React.Component<{}, AppState> {
                       <PrimaryButton style={{ zIndex: 2 }} text="Find Similar Papers" onClick={getSimilarPapersByAbstract} allowDisabledFocus />
                     </Stack>
                     <div className="m-t-md"></div>
-                    <TextField value={this.state.searchTitle || ''} placeholder="Enter your own title here" onChange={onChangeSearchTitle} defaultValue={""} />
+                    {/* Do not show title when switch to 'ada' embedding */}
+                    { this.state.embeddingType.key == 'ada' || <TextField value={this.state.searchTitle || ''} placeholder="Enter your own title here" onChange={onChangeSearchTitle} defaultValue={""} /> }
                     <div className="m-t-md"></div>
                     <TextField value={this.state.searchAbstract || ''} placeholder="Enter your own abstract here" multiline rows={15} onChange={onChangeSearchAbstract} defaultValue={""} />
                     <div className="m-t-md"></div>
@@ -1262,6 +1350,38 @@ class App extends React.Component<{}, AppState> {
                   <SmartTable props={yearTableProps}></SmartTable>
                 </PivotItem>
               </Pivot>
+            </div>
+          </Split>
+
+          <Split
+            sizes={[50, 50]}
+            direction="horizontal"
+            expandToMin={false}
+            gutterSize={0}
+            gutterAlign="center"
+            cursor="col-resize"
+          >
+            <div className="split p-md p-b-0">
+              <div style={{ display: 'flex' }}>
+                <Label style={{ fontSize: "1.2rem" }}> Chat with your data here </Label>
+                <DefaultButton 
+                  style={{ marginLeft: 4, marginRight: 4 }}
+                  onClick={chatRequest}
+                  text={'Submit'}>
+                </DefaultButton>
+              </div>
+              <TextField style={{ marginBottom: "2em" }} multiline rows={10} defaultValue={""} onChange={onChangeChatText} />
+            </div>
+
+            <div className="split p-md p-b-0">
+              <div>
+                <div style={{ display: 'flex' }}>
+                  <Label style={{ fontSize: "1.2rem" }}> LLM Feedback </Label>
+                </div>
+                <TextField 
+                  style={{ marginBottom: "2em", fontSize: "1.3em",  lineHeight: "1.5em" , fontWeight: 600 }} 
+                  multiline rows={10} defaultValue={""} disabled value={this.state.chatResponse}/>
+              </div>
             </div>
           </Split>
         </LoadingOverlay>

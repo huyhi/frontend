@@ -33,17 +33,21 @@ let scatterplot;
 let datapoints = [];
 let [xMin, xMax] = [{
     "specter_umap": 1000,
-    "glove_umap": 1000
+    "glove_umap": 1000,
+    "ada_umap": 1000,
 },{
     "specter_umap": -1000,
-    "glove_umap": -1000
+    "glove_umap": -1000,
+    "ada_umap": -1000,
 }]
 let [yMin, yMax] = [{
     "specter_umap": 1000,
-    "glove_umap": 1000
+    "glove_umap": 1000,
+    "ada_umap": 1000
 },{
     "specter_umap": -1000,
-    "glove_umap": -1000
+    "glove_umap": -1000,
+    "ada_umap": 1000
 }]
 
 const hoverColor = "#bbdefb";
@@ -332,6 +336,15 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
                     x = 0;
                     y = 0;
                 }
+            }else if(embeddingKey == "ada_umap"){
+              if("ada_umap" in papersToShow[i] && papersToShow[i]["ada_umap"] != null){
+                  x = papersToShow[i]["ada_umap"][0];
+                  y = papersToShow[i]["ada_umap"][1];
+              }else{
+                  // Put them to the origin, what else!
+                  x = 0;
+                  y = 0;
+              }
             }
             datapoint = [
                 x,
