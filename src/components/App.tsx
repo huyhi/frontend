@@ -8,6 +8,7 @@ import { Callout, CommandBar, DefaultButton, DelayedRender, Dropdown, ICommandBa
 import SmartTable, { SmartTableProps } from "./SmartTable";
 import LoadingOverlay from 'react-loading-overlay';
 import Split from 'react-split';
+import Markdown from 'react-markdown'
 import { initializeIcons } from '@uifabric/icons';
 import logo from './../assets/img/vitality-logo.png';
 import gtLogo from './../assets/img/gt-logo.png';
@@ -561,17 +562,13 @@ class App extends React.Component<{}, AppState> {
         const readChunk = ({ done, value }) => {
           if (done) {
             if (partial) {
-              this.setState({chatResponse: `${this.state.chatResponse}${partial}`})
+              this.setState({chatResponse: `${partial}`})
             }
             this.setState({chatResponsing: false})
             return;
           }
           partial += decoder.decode(value);
-          const lines = partial.split('\n');
-          partial = lines.pop();
-          for (const line of lines) {
-            this.setState({chatResponse: `${this.state.chatResponse}${line}`})
-          }
+          this.setState({chatResponse: `${partial}`})
           reader.read().then(readChunk) // Call readChunk recursively with next chunk
         }
         reader.read().then(readChunk)
@@ -593,16 +590,12 @@ class App extends React.Component<{}, AppState> {
         const readChunk = ({ done, value }) => {
           if (done) {
             if (partial) {
-              this.setState({summarizeResponse: `${this.state.summarizeResponse}${partial}`})
+              this.setState({summarizeResponse: `${partial}`})
             }
             return
           }
           partial += decoder.decode(value)
-          const lines = partial.split('\n')
-          partial = lines.pop()
-          for (const line of lines) {
-            this.setState({summarizeResponse: `${this.state.summarizeResponse}${line}`})
-          }
+          this.setState({summarizeResponse: `${partial}`})
           reader.read().then(readChunk)
         }
         reader.read().then(readChunk)
@@ -1223,7 +1216,7 @@ class App extends React.Component<{}, AppState> {
             <br />
             <a ref={this.state.checkoutLinkRef}></a>
             <SmartTable props={savedPapersTableProps} ></SmartTable>
-            <div style={{ fontSize: '1.25em', lineHeight: '1.25em'}}> {this.state.summarizeResponse} </div>
+            <div style={{ fontSize: '1.25em', lineHeight: '1.25em'}}> <Markdown>{this.state.summarizeResponse}</Markdown> </div>
           </Panel>
           <div className="m-t-md p-md">
             <SmartTable props={allPapersTableProps}></SmartTable>
@@ -1378,9 +1371,11 @@ class App extends React.Component<{}, AppState> {
                 <div style={{ display: 'flex' }}>
                   <Label style={{ fontSize: "1.2rem" }}> LLM Feedback </Label>
                 </div>
-                <TextField 
-                  style={{ marginBottom: "2em", fontSize: "1.3em",  lineHeight: "1.5em" , fontWeight: 600 }} 
-                  multiline rows={10} defaultValue={""} disabled value={this.state.chatResponse}/>
+                <Markdown
+                  components={{
+                    strong: ({node, ...props}) => <span style={{color: 'blue', fontWeight: 'bold'}} {...props} />
+                  }}
+                >{this.state.chatResponse}</Markdown>
               </div>
             </div>
           </Split>

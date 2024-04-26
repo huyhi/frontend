@@ -95,6 +95,7 @@
     "mobx": "^5.15.4",
     "mobx-react": "^6.1.8",
     "react-loading-overlay": "^1.0.1",
+    "react-markdown": "^7.1.2",
     "react-select-fast-filter-options": "^0.2.3",
     "react-split": "2.0.9",
     "react-table": "^7.6.0",
