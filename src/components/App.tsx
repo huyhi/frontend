@@ -4,7 +4,7 @@ import "./../assets/scss/App.scss";
 import PaperScatter from "./PaperScatter";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCaretDown, faCaretUp, faTimes, faTrash, faPlus, faPlusCircle, faSearch, faExternalLinkAlt, faClipboardList, faEyeSlash, faFileExport, faKey, faHandPointer, faKeyboard, faMouse, faGraduationCap, faMapMarkerAlt, faQuestionCircle, faCheckCircle, faArrowAltCircleRight, faExpand, faMinus } from '@fortawesome/free-solid-svg-icons';
-import { Callout, CommandBar, DefaultButton, DelayedRender, Dropdown, ICommandBarItemProps, Icon, IconButton, IDropdownOption, IPivotItemProps, Label, Panel, PanelType, Pivot, PivotItem, PivotLinkFormat, PivotLinkSize, PrimaryButton, registerIcons, Stack, Text, TextField } from "@fluentui/react";
+import { Callout, CommandBar, DefaultButton, DelayedRender, Dropdown, ICommandBarItemProps, Icon, IDropdownOption, IPivotItemProps, Label, Panel, PanelType, Pivot, PivotItem, PivotLinkFormat, PivotLinkSize, PrimaryButton, registerIcons, Stack, Text, TextField } from "@fluentui/react";
 import SmartTable, { SmartTableProps } from "./SmartTable";
 import LoadingOverlay from 'react-loading-overlay';
 import Split from 'react-split';
@@ -575,12 +575,39 @@ class App extends React.Component<{}, AppState> {
       })
     }
 
-    const summarizePapers = () => {
+    const summarizePapers = (prompt) => {
       this.setState({summarizeResponse: 'SUMMARIZING ... ...'})
       fetch(`${baseUrl}summarize`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ids: this.state.dataSavedID})
+        body: JSON.stringify({ids: this.state.dataSavedID, prompt: prompt})
+      }).then(response => {
+        const reader = response.body.getReader()
+        const decoder = new TextDecoder('utf-8')
+        let partial = ''
+        this.setState({summarizeResponse: ''})
+      
+        const readChunk = ({ done, value }) => {
+          if (done) {
+            if (partial) {
+              this.setState({summarizeResponse: `${partial}`})
+            }
+            return
+          }
+          partial += decoder.decode(value)
+          this.setState({summarizeResponse: `${partial}`})
+          reader.read().then(readChunk)
+        }
+        reader.read().then(readChunk)
+      })
+    }
+
+    const literatureReviewPapers = () => {
+      this.setState({summarizeResponse: 'LITERATURE REVIEW ... ...'})
+      fetch(`${baseUrl}literatureReview`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ids: this.state.dataSavedID, prompt: prompt})
       }).then(response => {
         const reader = response.body.getReader()
         const decoder = new TextDecoder('utf-8')
@@ -871,7 +898,7 @@ class App extends React.Component<{}, AppState> {
       setFilteredPapers: (dataFiltered) => { this.updateStateProp("dataFiltered", dataFiltered, "saved") },
       dataFiltered: this.state.dataFiltered["saved"],
       columnWidths: this.state.columnWidths,
-      tableControls: ["add", "delete", "info", "locate", "summarize", "export"],
+      tableControls: ["add", "delete", "info", "locate", "summarize", "literatureReview", "export"],
       columnIds: this.state.columns["saved"],
       deleteRow: (rowId) => { deleteRows("dataSaved", rowId); deleteRows("dataSavedID", rowId); },
       addToSimilarInputPapers: addToSimilarInputPapers,
@@ -880,6 +907,7 @@ class App extends React.Component<{}, AppState> {
       isInSavedPapers: isInSavedPapers,
       checkoutPapers: checkoutPapers,
       summarizePapers: summarizePapers,
+      literatureReviewPapers: literatureReviewPapers,
       openGScholar: openGScholar,
       isInSelectedNodeIDs: isInSelectedNodeIDs,
     }

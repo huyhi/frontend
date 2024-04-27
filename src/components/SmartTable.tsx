@@ -15,7 +15,7 @@ import {
   useFlexLayout, 
   useResizeColumns
 } from 'react-table';
-import { DefaultButton, Dropdown, Icon, IconButton, IDropdownOption, SearchBox, Text, Modal, ActionButton, Stack, PrimaryButton, TooltipHost, TooltipDelay, DirectionalHint, ITooltipProps, ITooltipHostStyles, ITooltipStyles } from "@fluentui/react";
+import { DefaultButton, TextField, Callout, DelayedRender, Modal, Stack, PrimaryButton, Dropdown, ActionButton, Icon, IconButton, IDropdownOption, SearchBox, Text, TooltipHost, TooltipDelay, DirectionalHint, ITooltipStyles } from "@fluentui/react";
 import { observer } from "mobx-react";
 import Slider from '@material-ui/core/Slider';
 import "react-select/dist/react-select.css";
@@ -503,6 +503,12 @@ function Table({
                 scrollToPaperID,
                 setPaperInfo,
                 paperInfo,
+                summarizeBtnShow,
+                setSummarizeBtnShow,
+                literatureReviewBtnShow,
+                setLiteratureReviewBtnShow,
+                summarizePrompt,
+                literatureReviewPrompt,
                 columns, 
                 data, 
                 tableData,
@@ -512,6 +518,9 @@ function Table({
                 addToSavedPapers,
                 checkoutPapers,
                 summarizePapers,
+                setSummarizePrompt,
+                literatureReviewPapers,
+                setLiteratureReviewPrompt,
                 addToSelectNodeIDs,
                 isInSimilarInputPapers, 
                 isInSavedPapers,
@@ -963,6 +972,14 @@ function Table({
   // Modal Open/Close
   const [isModalOpen, setModalState] = React.useState(false);
 
+  const onChangeSummarizePrompt = (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newText: string): void => {
+    setSummarizePrompt(newText)
+  }
+
+  const onChangeLiteratureReviewPrompt = (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newText: string): void => {
+    setLiteratureReviewPrompt(newText)
+  }
+
   // Render the UI for your table
   return (
     <>
@@ -1110,12 +1127,51 @@ function Table({
                   {tableControls.indexOf("summarize") !== -1 ?
                   <>
                     <PrimaryButton 
-                      onClick={summarizePapers}
+                      id='summarizeBtnId'
+                      onClick={() => setSummarizeBtnShow(!summarizeBtnShow)}
                       text="Summarize"
                       allowDisabledFocus
-                      styles={{root: {padding:0, minWidth: 0, display: "inline-block", verticalAlign: "top"}}}
+                      styles={{root: {padding:0, margin: '0 0.5em', minWidth: 0, display: "inline-block", verticalAlign: "top"}}}
                     ></PrimaryButton>
-                    {' '}
+                    { summarizeBtnShow && (
+                      <Callout
+                        style={{padding: '16px 16px', width: 450}}
+                        target={'#summarizeBtnId'}
+                        onDismiss={() => setSummarizeBtnShow(!summarizeBtnShow)}
+                        role="status"
+                        aria-live="assertive"
+                      >
+                        <div>
+                          <TextField value={summarizePrompt} multiline onChange={onChangeSummarizePrompt}/>
+                          <DefaultButton onClick={() => {summarizePapers(summarizePrompt)}}> Submit </DefaultButton>
+                        </div>
+                      </Callout>
+                    )}
+                  </>
+                  : null}
+                  {tableControls.indexOf("literatureReview") !== -1 ?
+                  <>
+                    <PrimaryButton 
+                      id='literatureReviewBtnId'
+                      onClick={() => setLiteratureReviewBtnShow(!literatureReviewBtnShow)}
+                      text="Literature Review"
+                      allowDisabledFocus
+                      styles={{root: {padding:0, margin: '0 0.5em', minWidth: 0, display: "inline-block", verticalAlign: "top"}}}
+                    ></PrimaryButton>
+                    { literatureReviewBtnShow && (
+                      <Callout
+                        style={{padding: '16px 16px', width: 450}}
+                        target={'#literatureReviewBtnId'}
+                        onDismiss={() => setLiteratureReviewBtnShow(!literatureReviewBtnShow)}
+                        role="status"
+                        aria-live="assertive"
+                      >
+                        <div>
+                          <TextField value={literatureReviewPrompt} multiline onChange={onChangeLiteratureReviewPrompt}/>
+                          <DefaultButton onClick={() => {literatureReviewPapers(literatureReviewPrompt)}}> Submit </DefaultButton>
+                        </div>
+                      </Callout>
+                    )}
                   </>
                   : null}
                   {tableControls.indexOf("export") !== -1 ?
@@ -1125,9 +1181,8 @@ function Table({
                       iconProps={{iconName: "FileExport"}} 
                       text="Export"
                       allowDisabledFocus
-                      styles={{root: {padding:0, minWidth: 0, display: "inline-block", verticalAlign: "top"}}}
+                      styles={{root: {padding:0, margin: '0 0 0 0.5em', minWidth: 0, display: "inline-block", verticalAlign: "top"}}}
                     ></PrimaryButton>
-                    {' '}
                   </>
                   : null}
             </div>
@@ -1223,6 +1278,7 @@ export interface SmartTableProps {
   updateVisibleColumns: Function;
   checkoutPapers?: Function;
   summarizePapers?: Function;
+  literatureReviewPapers?: Function;
   embeddingType: string;
   hasEmbeddings: Function;
   openGScholar?: Function;
@@ -1236,7 +1292,7 @@ export const SmartTable: React.FC<{props: SmartTableProps}> = observer(({props})
         columnFilterTypes, updateVisibleColumns, columnsVisible, updateColumnFilterValues, 
         columnFilterValues, setFilteredPapers, updateColumnSortByValues, columnSortByValues, 
         globalFilterValue, updateGlobalFilterValue, scrollToPaperID, addToSelectNodeIDs, 
-        checkoutPapers, summarizePapers, embeddingType, hasEmbeddings, openGScholar, isInSelectedNodeIDs
+        checkoutPapers, summarizePapers, literatureReviewPapers, embeddingType, hasEmbeddings, openGScholar, isInSelectedNodeIDs
     } = props;
 
     const data = tableData[tableType];
@@ -1266,6 +1322,17 @@ export const SmartTable: React.FC<{props: SmartTableProps}> = observer(({props})
     };
 
     const [paperInfo, setPaperInfo] = React.useState(null);
+    const [summarizeBtnShow, setSummarizeBtnShow] = React.useState(false);
+    const [literatureReviewBtnShow, setLiteratureReviewBtnShow] = React.useState(false);
+
+    const [summarizePrompt, setSummarizePrompt] = React.useState(`You are a scholar expert in the field of data visualization. \
+    Now, I'm giving you relevant information about some papers. \
+    Could you please help me summarize the content of this paper? \
+    The requirement is to provide a detailed summary and also to expand upon it as appropriate.`);
+    const [literatureReviewPrompt, setLiteratureReviewPrompt] = React.useState(`You are an expert scholar in the field of data visualization. \
+    Now, I'm giving you information on some relevant papers. \
+    Could you please help me write a comprehensive literature review about these papers? \
+    The requirement is to compare these papers as much as possible, summarizing the similarities, differences, and connections between them.`);
 
     return (
         <Styles>
@@ -1276,6 +1343,14 @@ export const SmartTable: React.FC<{props: SmartTableProps}> = observer(({props})
             scrollToPaperID={scrollToPaperID}
             paperInfo={paperInfo}
             setPaperInfo={setPaperInfo}
+            summarizeBtnShow={summarizeBtnShow}
+            setSummarizeBtnShow={setSummarizeBtnShow}
+            literatureReviewBtnShow={literatureReviewBtnShow}
+            setLiteratureReviewBtnShow={setLiteratureReviewBtnShow}
+            summarizePrompt={summarizePrompt}
+            setSummarizePrompt={setSummarizePrompt}
+            literatureReviewPrompt={literatureReviewPrompt}
+            setLiteratureReviewPrompt={setLiteratureReviewPrompt}
             columns={columns}
             data={data}
             tableControls={tableControls}
@@ -1297,6 +1372,7 @@ export const SmartTable: React.FC<{props: SmartTableProps}> = observer(({props})
             dataFiltered={dataFiltered}
             checkoutPapers={checkoutPapers}
             summarizePapers={summarizePapers}
+            literatureReviewPapers={literatureReviewPapers}
             openGScholar={openGScholar}
         />
         </Styles>
