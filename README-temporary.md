@@ -8,3 +8,4 @@ OR just serve the built files from the dist folder.
 
 - `cd dist`
 - `python -m http.server 8080`
+- Open http://localhost:8080 in Chrome
