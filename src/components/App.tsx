@@ -602,7 +602,7 @@ class App extends React.Component<{}, AppState> {
       })
     }
 
-    const literatureReviewPapers = () => {
+    const literatureReviewPapers = (prompt) => {
       this.setState({summarizeResponse: 'LITERATURE REVIEW ... ...'})
       fetch(`${baseUrl}literatureReview`, {
         method: 'POST',
