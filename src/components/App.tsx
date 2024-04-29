@@ -103,6 +103,7 @@ interface AppState {
   chatResponsing: boolean;
   chatDoc: Array<any>;
   summarizeResponse: string;
+  chatHistory: Array<any>;
 }
 
 const embeddingTypeDropdownOptions = [
@@ -258,7 +259,8 @@ class App extends React.Component<{}, AppState> {
       chatResponse: '',
       chatResponsing: false,
       chatDoc: [],
-      summarizeResponse: ''
+      summarizeResponse: '',
+      chatHistory: [],
     }
   }
 
@@ -553,7 +555,10 @@ class App extends React.Component<{}, AppState> {
       fetch(`${baseUrl}chat`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({text: this.state.chatText})
+        body: JSON.stringify({
+          text: this.state.chatText,
+          chatHistory: this.state.chatHistory
+        })
       }).then(response => {
         const reader = response.body.getReader();
         const decoder = new TextDecoder('utf-8');
@@ -566,6 +571,18 @@ class App extends React.Component<{}, AppState> {
               this.setState({chatResponse: `${partial}`})
             }
             this.setState({chatResponsing: false})
+            // maximum to save latest 3 dialog in chatHistory array
+            if (this.state.chatHistory.length >= 3) {
+              this.setState({chatHistory: this.state.chatHistory.slice(1).concat([{
+                'human': this.state.chatText,
+                'ai': this.state.chatResponse
+              }])})
+            } else {
+              this.setState({chatHistory: this.state.chatHistory.concat([{
+                'human': this.state.chatText,
+                'ai': this.state.chatResponse
+              }])})
+            }
             return;
           }
           partial += decoder.decode(value);
