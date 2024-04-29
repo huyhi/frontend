@@ -3,8 +3,8 @@ import { hot } from "react-hot-loader";
 import "./../assets/scss/App.scss";
 import PaperScatter from "./PaperScatter";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCaretDown, faCaretUp, faTimes, faTrash, faPlus, faPlusCircle, faSearch, faExternalLinkAlt, faClipboardList, faEyeSlash, faFileExport, faKey, faHandPointer, faKeyboard, faMouse, faGraduationCap, faMapMarkerAlt, faQuestionCircle, faCheckCircle, faArrowAltCircleRight, faExpand, faMinus } from '@fortawesome/free-solid-svg-icons';
-import { Callout, CommandBar, DefaultButton, DelayedRender, Dropdown, ICommandBarItemProps, Icon, IDropdownOption, IPivotItemProps, Label, Panel, PanelType, Pivot, PivotItem, PivotLinkFormat, PivotLinkSize, PrimaryButton, registerIcons, Stack, Text, TextField } from "@fluentui/react";
+import { faCaretDown, faCaretUp, faTimes, faTrash, faPlus, faPlusCircle, faSearch, faExternalLinkAlt, faClipboardList, faEyeSlash, faFileExport, faKey, faHandPointer, faKeyboard, faMouse, faGraduationCap, faMapMarkerAlt, faQuestionCircle, faCheckCircle, faArrowAltCircleRight, faExpand, faMinus, faRocket } from '@fortawesome/free-solid-svg-icons';
+import { Callout, CommandBar, DefaultButton, DelayedRender, Dropdown, ICommandBarItemProps, Icon, IconButton, IDropdownOption, IPivotItemProps, Label, Panel, PanelType, Pivot, PivotItem, PivotLinkFormat, PivotLinkSize, PrimaryButton, registerIcons, Stack, Text, TextField } from "@fluentui/react";
 import SmartTable, { SmartTableProps } from "./SmartTable";
 import LoadingOverlay from 'react-loading-overlay';
 import Split from 'react-split';
@@ -22,6 +22,7 @@ const baseUrl = "http://localhost:3000/";
 initializeIcons();
 registerIcons({
   icons: {
+    Rocket: <FontAwesomeIcon icon={faRocket} />,
     Link: <FontAwesomeIcon icon={faExternalLinkAlt} />,
     GraduationCap: <FontAwesomeIcon icon={faGraduationCap} />,
     CaretUp: <FontAwesomeIcon icon={faCaretUp} />,
@@ -1384,11 +1385,14 @@ class App extends React.Component<{}, AppState> {
           >
             <div className="split p-md p-b-0">
               <div style={{ display: 'flex' }}>
-                <Label style={{ fontSize: "1.2rem" }}> Chat with your data here </Label>
+                <Label style={{ fontSize: "1.2rem" }}> Chat with your data here</Label>
+                &nbsp;&nbsp;
                 <DefaultButton 
-                  style={{ marginLeft: 4, marginRight: 4 }}
+                  className="iconButton"
+                  styles={{root: {padding:0, minWidth: 0, display: "inline-block", verticalAlign: "top"}, icon: {color: "#116EBE"}}}
                   onClick={chatRequest}
-                  text={'Submit'}>
+                  iconProps={{iconName: "Rocket"}}
+                  text={'Ask'}>
                 </DefaultButton>
               </div>
               <TextField style={{ marginBottom: "2em" }} multiline rows={10} defaultValue={""} onChange={onChangeChatText} />
