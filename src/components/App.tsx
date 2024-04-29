@@ -1089,91 +1089,92 @@ class App extends React.Component<{}, AppState> {
       isInSelectedNodeIDs: isInSelectedNodeIDs,
     }
 
-    const _items: ICommandBarItemProps[] = [
-      {
-        key: 'brand',
-        commandBarButtonAs: () => (
-          <div style={{ color: "white" }}>
-            {/* <Text variant="xLarge">vitaLITy</Text> */}
-            <img height="30" title="VitaLITy Logo" src={logo} alt="VitaLITy Logo" />
-          </div>
-        )
-      },
-      {
-        key: 'description',
-        commandBarButtonAs: () => (
-          <div style={{ color: "white", marginLeft: 16, maxWidth: 280 }}>
-            <Text variant="small">Promoting Serendipitous Discovery of Academic Literature with Transformers &amp; Visual Analytics</Text>
-          </div>
-        )
-      },
-      {
-        key: 'conferencebrand',
-        commandBarButtonAs: () => (
-          <div style={{ color: "white" }}>
-            <img height="30" title="IEEE VIS Logo" src={visConferenceLogo} alt="IEEE VIS Logo" />
-          </div>
-        )
-      },
-      {
-        key: 'citeus',
-        commandBarButtonAs: () => (
-          <div style={{ color: "white", marginLeft: 16, paddingLeft: 4, paddingRight: 4 }}>
-            <DefaultButton id={"citationBtnId"} onClick={toggleIsCiteUsCalloutVisible} text={'Cite Us!'}></DefaultButton>
-            {this.state.isCiteUsCalloutVisible && (
-              <Callout
-                style={{
-                  padding: '16px 16px',
-                  width: 450
-                }}
-                target={`#citationBtnId`}
-                onDismiss={toggleIsCiteUsCalloutVisible}
-                role="status"
-                aria-live="assertive"
-              >
-                <DelayedRender>
-                  <div>
-                    <Text variant="medium">
-                      A. Narechania, A. Karduni, R. Wesslen and E. Wall, <strong>"vitaLITy: Promoting Serendipitous Discovery of Academic Literature with Transformers &amp; Visual Analytics,"</strong> <i>in IEEE Transactions on Visualization and Computer Graphics</i>, vol. 28, no. 1, pp. 486-496, Jan. 2022, doi: 10.1109/TVCG.2021.3114820.
-                    </Text>
-                    <br /><br />
-                    <DefaultButton 
-                      style={{ marginLeft: 4, marginRight: 4 }}
-                      onClick={() => {
-                        const citation = `@ARTICLE{9552447,  author={Narechania, Arpit and Karduni, Alireza and Wesslen, Ryan and Wall, Emily},  journal={IEEE Transactions on Visualization and Computer Graphics},   title={VITALITY: Promoting Serendipitous Discovery of Academic Literature with Transformers  amp; Visual Analytics},   year={2022},  volume={28},  number={1},  pages={486-496},  doi={10.1109/TVCG.2021.3114820}}`
-                        navigator.clipboard.writeText(citation);
-                      }} 
-                      text={'Copy .BibTex'}>
-                    </DefaultButton>
-                    <DefaultButton
-                      style={{ marginLeft: 4, marginRight: 4 }}
-                      href="https://doi.org/10.1109/TVCG.2021.3114820"
-                      target="_blank"
-                      text="Other formats from IEEE TVCG'21"
-                      title="Other formats from IEEE TVCG'21"></DefaultButton>
-                    <br />
-                  </div>
-                </DelayedRender>
-              </Callout>
-            )}
-          </div>
-        )
-      },
-      {
-        key: 'affiliationbrands',
-        commandBarButtonAs: () => (
-          <div style={{ color: "white", marginLeft: 16, paddingLeft: 4, paddingRight: 4 }}>
-            <img height="30" src={gtLogo} title="Georgia Tech Logo" alt="Georgia Tech Logo" />
-            &nbsp;&nbsp;
-            <img height="30" src={northwesternLogo} title="Northwestern University Logo" alt="Northwestern University Logo" />
-            &nbsp;&nbsp;
-            <img height="30" src={unccLogo} title="University of North Carolina Charlotte Logo" alt="University of North Carolina Charlotte Logo" />
-            &nbsp;&nbsp;
-            <img height="30" src={emoryLogo} title="Emory University Logo" alt="Emory University Logo" />
-          </div>
-        )
-      }
-    ];
+    const _items: ICommandBarItemProps[] = [];
+    // [
+    //   {
+    //     key: 'brand',
+    //     commandBarButtonAs: () => (
+    //       <div style={{ color: "white" }}>
+    //         {/* <Text variant="xLarge">vitaLITy</Text> */}
+    //         <img height="30" title="VitaLITy Logo" src={logo} alt="VitaLITy Logo" />
+    //       </div>
+    //     )
+    //   },
+    //   {
+    //     key: 'description',
+    //     commandBarButtonAs: () => (
+    //       <div style={{ color: "white", marginLeft: 16, maxWidth: 280 }}>
+    //         <Text variant="small">Promoting Serendipitous Discovery of Academic Literature with Transformers &amp; Visual Analytics</Text>
+    //       </div>
+    //     )
+    //   },
+    //   {
+    //     key: 'conferencebrand',
+    //     commandBarButtonAs: () => (
+    //       <div style={{ color: "white" }}>
+    //         <img height="30" title="IEEE VIS Logo" src={visConferenceLogo} alt="IEEE VIS Logo" />
+    //       </div>
+    //     )
+    //   },
+    //   {
+    //     key: 'citeus',
+    //     commandBarButtonAs: () => (
+    //       <div style={{ color: "white", marginLeft: 16, paddingLeft: 4, paddingRight: 4 }}>
+    //         <DefaultButton id={"citationBtnId"} onClick={toggleIsCiteUsCalloutVisible} text={'Cite Us!'}></DefaultButton>
+    //         {this.state.isCiteUsCalloutVisible && (
+    //           <Callout
+    //             style={{
+    //               padding: '16px 16px',
+    //               width: 450
+    //             }}
+    //             target={`#citationBtnId`}
+    //             onDismiss={toggleIsCiteUsCalloutVisible}
+    //             role="status"
+    //             aria-live="assertive"
+    //           >
+    //             <DelayedRender>
+    //               <div>
+    //                 <Text variant="medium">
+    //                   A. Narechania, A. Karduni, R. Wesslen and E. Wall, <strong>"vitaLITy: Promoting Serendipitous Discovery of Academic Literature with Transformers &amp; Visual Analytics,"</strong> <i>in IEEE Transactions on Visualization and Computer Graphics</i>, vol. 28, no. 1, pp. 486-496, Jan. 2022, doi: 10.1109/TVCG.2021.3114820.
+    //                 </Text>
+    //                 <br /><br />
+    //                 <DefaultButton 
+    //                   style={{ marginLeft: 4, marginRight: 4 }}
+    //                   onClick={() => {
+    //                     const citation = `@ARTICLE{9552447,  author={Narechania, Arpit and Karduni, Alireza and Wesslen, Ryan and Wall, Emily},  journal={IEEE Transactions on Visualization and Computer Graphics},   title={VITALITY: Promoting Serendipitous Discovery of Academic Literature with Transformers  amp; Visual Analytics},   year={2022},  volume={28},  number={1},  pages={486-496},  doi={10.1109/TVCG.2021.3114820}}`
+    //                     navigator.clipboard.writeText(citation);
+    //                   }} 
+    //                   text={'Copy .BibTex'}>
+    //                 </DefaultButton>
+    //                 <DefaultButton
+    //                   style={{ marginLeft: 4, marginRight: 4 }}
+    //                   href="https://doi.org/10.1109/TVCG.2021.3114820"
+    //                   target="_blank"
+    //                   text="Other formats from IEEE TVCG'21"
+    //                   title="Other formats from IEEE TVCG'21"></DefaultButton>
+    //                 <br />
+    //               </div>
+    //             </DelayedRender>
+    //           </Callout>
+    //         )}
+    //       </div>
+    //     )
+    //   },
+    //   {
+    //     key: 'affiliationbrands',
+    //     commandBarButtonAs: () => (
+    //       <div style={{ color: "white", marginLeft: 16, paddingLeft: 4, paddingRight: 4 }}>
+    //         <img height="30" src={gtLogo} title="Georgia Tech Logo" alt="Georgia Tech Logo" />
+    //         &nbsp;&nbsp;
+    //         <img height="30" src={northwesternLogo} title="Northwestern University Logo" alt="Northwestern University Logo" />
+    //         &nbsp;&nbsp;
+    //         <img height="30" src={unccLogo} title="University of North Carolina Charlotte Logo" alt="University of North Carolina Charlotte Logo" />
+    //         &nbsp;&nbsp;
+    //         <img height="30" src={emoryLogo} title="Emory University Logo" alt="Emory University Logo" />
+    //       </div>
+    //     )
+    //   }
+    // ];
 
     const _farItems: ICommandBarItemProps[] = [
       {
