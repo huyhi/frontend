@@ -10,7 +10,7 @@ import LoadingOverlay from 'react-loading-overlay';
 import Split from 'react-split';
 import Markdown from 'react-markdown'
 import { initializeIcons } from '@uifabric/icons';
-import logo from './../assets/img/vitality-logo.png';
+import logo from './../assets/img/vitality-logo-2.png';
 import gtLogo from './../assets/img/gt-logo.png';
 import northwesternLogo from './../assets/img/northwestern-logo.png';
 import unccLogo from './../assets/img/uncc-logo.png';
