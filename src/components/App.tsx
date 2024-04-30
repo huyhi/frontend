@@ -814,7 +814,7 @@ class App extends React.Component<{}, AppState> {
 
           const href = window.URL.createObjectURL(blob);
           const a = parent.state.checkoutLinkRef.current;
-          a.download = 'checkedOutPapers.json';
+          a.download = 'checkedOutPapers.bibtex';
           a.href = href;
           a.click();
           a.href = '';

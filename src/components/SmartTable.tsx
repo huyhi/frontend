@@ -1179,7 +1179,7 @@ function Table({
                     <PrimaryButton 
                       onClick={checkoutPapers} 
                       iconProps={{iconName: "FileExport"}} 
-                      text="Export"
+                      text="Export bib"
                       allowDisabledFocus
                       styles={{root: {padding:0, margin: '0 0 0 0.5em', minWidth: 0, display: "inline-block", verticalAlign: "top"}}}
                     ></PrimaryButton>
