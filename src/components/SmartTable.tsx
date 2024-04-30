@@ -979,6 +979,16 @@ function Table({
   const onChangeLiteratureReviewPrompt = (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newText: string): void => {
     setLiteratureReviewPrompt(newText)
   }
+  
+  const getHeight = (tableType) => {
+    if (tableType == "saved") {
+      return 250
+    } 
+    if (tableType == "similar" || tableType == "similarPayload") {
+      return 200
+    } 
+    return 235
+  }
 
   // Render the UI for your table
   return (
@@ -1234,7 +1244,7 @@ function Table({
         <VariableSizeList
           ref={listRef}
           key={"ID"}
-          height={tableType == "saved" ? 350 : 235}
+          height={getHeight(tableType)}
           itemCount={rows.length}
           itemSize={(index) => 40}
           itemKey={(index) => index }

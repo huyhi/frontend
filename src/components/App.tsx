@@ -104,6 +104,7 @@ interface AppState {
   chatDoc: Array<any>;
   summarizeResponse: string;
   chatHistory: Array<any>;
+  chatSelectedPaper: string,
 }
 
 const embeddingTypeDropdownOptions = [
@@ -261,6 +262,7 @@ class App extends React.Component<{}, AppState> {
       chatDoc: [],
       summarizeResponse: '',
       chatHistory: [],
+      chatSelectedPaper: '',
     }
   }
 
@@ -550,6 +552,7 @@ class App extends React.Component<{}, AppState> {
     }
 
     const chatRequest = () => {
+      this.setState({chatSelectedPaper: ''})
       this.setState({chatResponse: 'RUNNING ... ...'})
       this.setState({chatResponsing: true})
       fetch(`${baseUrl}chat`, {
@@ -1106,92 +1109,91 @@ class App extends React.Component<{}, AppState> {
       isInSelectedNodeIDs: isInSelectedNodeIDs,
     }
 
-    const _items: ICommandBarItemProps[] = [];
-    // [
-    //   {
-    //     key: 'brand',
-    //     commandBarButtonAs: () => (
-    //       <div style={{ color: "white" }}>
-    //         {/* <Text variant="xLarge">vitaLITy</Text> */}
-    //         <img height="30" title="VitaLITy Logo" src={logo} alt="VitaLITy Logo" />
-    //       </div>
-    //     )
-    //   },
-    //   {
-    //     key: 'description',
-    //     commandBarButtonAs: () => (
-    //       <div style={{ color: "white", marginLeft: 16, maxWidth: 280 }}>
-    //         <Text variant="small">Promoting Serendipitous Discovery of Academic Literature with Transformers &amp; Visual Analytics</Text>
-    //       </div>
-    //     )
-    //   },
-    //   {
-    //     key: 'conferencebrand',
-    //     commandBarButtonAs: () => (
-    //       <div style={{ color: "white" }}>
-    //         <img height="30" title="IEEE VIS Logo" src={visConferenceLogo} alt="IEEE VIS Logo" />
-    //       </div>
-    //     )
-    //   },
-    //   {
-    //     key: 'citeus',
-    //     commandBarButtonAs: () => (
-    //       <div style={{ color: "white", marginLeft: 16, paddingLeft: 4, paddingRight: 4 }}>
-    //         <DefaultButton id={"citationBtnId"} onClick={toggleIsCiteUsCalloutVisible} text={'Cite Us!'}></DefaultButton>
-    //         {this.state.isCiteUsCalloutVisible && (
-    //           <Callout
-    //             style={{
-    //               padding: '16px 16px',
-    //               width: 450
-    //             }}
-    //             target={`#citationBtnId`}
-    //             onDismiss={toggleIsCiteUsCalloutVisible}
-    //             role="status"
-    //             aria-live="assertive"
-    //           >
-    //             <DelayedRender>
-    //               <div>
-    //                 <Text variant="medium">
-    //                   A. Narechania, A. Karduni, R. Wesslen and E. Wall, <strong>"vitaLITy: Promoting Serendipitous Discovery of Academic Literature with Transformers &amp; Visual Analytics,"</strong> <i>in IEEE Transactions on Visualization and Computer Graphics</i>, vol. 28, no. 1, pp. 486-496, Jan. 2022, doi: 10.1109/TVCG.2021.3114820.
-    //                 </Text>
-    //                 <br /><br />
-    //                 <DefaultButton 
-    //                   style={{ marginLeft: 4, marginRight: 4 }}
-    //                   onClick={() => {
-    //                     const citation = `@ARTICLE{9552447,  author={Narechania, Arpit and Karduni, Alireza and Wesslen, Ryan and Wall, Emily},  journal={IEEE Transactions on Visualization and Computer Graphics},   title={VITALITY: Promoting Serendipitous Discovery of Academic Literature with Transformers  amp; Visual Analytics},   year={2022},  volume={28},  number={1},  pages={486-496},  doi={10.1109/TVCG.2021.3114820}}`
-    //                     navigator.clipboard.writeText(citation);
-    //                   }} 
-    //                   text={'Copy .BibTex'}>
-    //                 </DefaultButton>
-    //                 <DefaultButton
-    //                   style={{ marginLeft: 4, marginRight: 4 }}
-    //                   href="https://doi.org/10.1109/TVCG.2021.3114820"
-    //                   target="_blank"
-    //                   text="Other formats from IEEE TVCG'21"
-    //                   title="Other formats from IEEE TVCG'21"></DefaultButton>
-    //                 <br />
-    //               </div>
-    //             </DelayedRender>
-    //           </Callout>
-    //         )}
-    //       </div>
-    //     )
-    //   },
-    //   {
-    //     key: 'affiliationbrands',
-    //     commandBarButtonAs: () => (
-    //       <div style={{ color: "white", marginLeft: 16, paddingLeft: 4, paddingRight: 4 }}>
-    //         <img height="30" src={gtLogo} title="Georgia Tech Logo" alt="Georgia Tech Logo" />
-    //         &nbsp;&nbsp;
-    //         <img height="30" src={northwesternLogo} title="Northwestern University Logo" alt="Northwestern University Logo" />
-    //         &nbsp;&nbsp;
-    //         <img height="30" src={unccLogo} title="University of North Carolina Charlotte Logo" alt="University of North Carolina Charlotte Logo" />
-    //         &nbsp;&nbsp;
-    //         <img height="30" src={emoryLogo} title="Emory University Logo" alt="Emory University Logo" />
-    //       </div>
-    //     )
-    //   }
-    // ];
+    const _items: ICommandBarItemProps[] = [
+      {
+        key: 'brand',
+        commandBarButtonAs: () => (
+          <div style={{ color: "white" }}>
+            {/* <Text variant="xLarge">vitaLITy</Text> */}
+            <img height="30" title="VitaLITy Logo" src={logo} alt="VitaLITy Logo" />
+          </div>
+        )
+      },
+      {
+        key: 'description',
+        commandBarButtonAs: () => (
+          <div style={{ color: "white", marginLeft: 16, maxWidth: 280 }}>
+            <Text variant="small">VitaLITy 2: Reviewing Academic Literature using Large Language Models</Text>
+          </div>
+        )
+      },
+      // {
+      //   key: 'conferencebrand',
+      //   commandBarButtonAs: () => (
+      //     <div style={{ color: "white" }}>
+      //       <img height="30" title="IEEE VIS Logo" src={visConferenceLogo} alt="IEEE VIS Logo" />
+      //     </div>
+      //   )
+      // },
+      // {
+      //   key: 'citeus',
+      //   commandBarButtonAs: () => (
+      //     <div style={{ color: "white", marginLeft: 16, paddingLeft: 4, paddingRight: 4 }}>
+      //       <DefaultButton id={"citationBtnId"} onClick={toggleIsCiteUsCalloutVisible} text={'Cite Us!'}></DefaultButton>
+      //       {this.state.isCiteUsCalloutVisible && (
+      //         <Callout
+      //           style={{
+      //             padding: '16px 16px',
+      //             width: 450
+      //           }}
+      //           target={`#citationBtnId`}
+      //           onDismiss={toggleIsCiteUsCalloutVisible}
+      //           role="status"
+      //           aria-live="assertive"
+      //         >
+      //           <DelayedRender>
+      //             <div>
+      //               <Text variant="medium">
+      //                 A. Narechania, A. Karduni, R. Wesslen and E. Wall, <strong>"vitaLITy: Promoting Serendipitous Discovery of Academic Literature with Transformers &amp; Visual Analytics,"</strong> <i>in IEEE Transactions on Visualization and Computer Graphics</i>, vol. 28, no. 1, pp. 486-496, Jan. 2022, doi: 10.1109/TVCG.2021.3114820.
+      //               </Text>
+      //               <br /><br />
+      //               <DefaultButton 
+      //                 style={{ marginLeft: 4, marginRight: 4 }}
+      //                 onClick={() => {
+      //                   const citation = `@ARTICLE{9552447,  author={Narechania, Arpit and Karduni, Alireza and Wesslen, Ryan and Wall, Emily},  journal={IEEE Transactions on Visualization and Computer Graphics},   title={VITALITY: Promoting Serendipitous Discovery of Academic Literature with Transformers  amp; Visual Analytics},   year={2022},  volume={28},  number={1},  pages={486-496},  doi={10.1109/TVCG.2021.3114820}}`
+      //                   navigator.clipboard.writeText(citation);
+      //                 }} 
+      //                 text={'Copy .BibTex'}>
+      //               </DefaultButton>
+      //               <DefaultButton
+      //                 style={{ marginLeft: 4, marginRight: 4 }}
+      //                 href="https://doi.org/10.1109/TVCG.2021.3114820"
+      //                 target="_blank"
+      //                 text="Other formats from IEEE TVCG'21"
+      //                 title="Other formats from IEEE TVCG'21"></DefaultButton>
+      //               <br />
+      //             </div>
+      //           </DelayedRender>
+      //         </Callout>
+      //       )}
+      //     </div>
+      //   )
+      // },
+      // {
+      //   key: 'affiliationbrands',
+      //   commandBarButtonAs: () => (
+      //     <div style={{ color: "white", marginLeft: 16, paddingLeft: 4, paddingRight: 4 }}>
+      //       <img height="30" src={gtLogo} title="Georgia Tech Logo" alt="Georgia Tech Logo" />
+      //       &nbsp;&nbsp;
+      //       <img height="30" src={northwesternLogo} title="Northwestern University Logo" alt="Northwestern University Logo" />
+      //       &nbsp;&nbsp;
+      //       <img height="30" src={unccLogo} title="University of North Carolina Charlotte Logo" alt="University of North Carolina Charlotte Logo" />
+      //       &nbsp;&nbsp;
+      //       <img height="30" src={emoryLogo} title="Emory University Logo" alt="Emory University Logo" />
+      //     </div>
+      //   )
+      // }
+    ];
 
     const _farItems: ICommandBarItemProps[] = [
       {
@@ -1284,32 +1286,32 @@ class App extends React.Component<{}, AppState> {
                 <Pivot linkSize={PivotLinkSize.normal} linkFormat={PivotLinkFormat.links} selectedKey={String(this.state.similarityPanelSelectedKey)} onLinkClick={(pivotItem: PivotItem) => this.setState({ similarityPanelSelectedKey: pivotItem["key"].split(".")[1] })}>
                   <PivotItem onRenderItemLink={_inputButtonRenderer} headerText={"By Papers"} itemCount={this.state.dataSimilarPayload.length}>
                     <div className="m-t-lg"></div>
-                    {
-                      this.state.dataSimilarPayload.length > 0 ?
-                        <React.Fragment>
-                          <Stack horizontal verticalAlign="start" horizontalAlign="start" tokens={{ childrenGap: 8 }}>
-                            <Label>Dimensions</Label>
-                            <Dropdown
-                              label=""
-                              selectedKey={this.state.similarityType.key}
-                              // eslint-disable-next-line react/jsx-no-bind
-                              onChange={(event: React.FormEvent<HTMLDivElement>, item: IDropdownOption) => { this.setState({ similarityType: item }) }}
-                              options={similarityTypeDropdownOptions}
-                              styles={{ root: { zIndex: 2 } }}
-                            />
-                            <Label>Count</Label>
-                            <Dropdown
-                              label=""
-                              selectedKey={this.state.maxSimilarPapers.key}
-                              // eslint-disable-next-line react/jsx-no-bind
-                              onChange={(event: React.FormEvent<HTMLDivElement>, item: IDropdownOption) => { this.setState({ maxSimilarPapers: item }) }}
-                              options={maxSimilarPapersDropdownOptions}
-                            />
-                            <PrimaryButton text="Find Similar Papers" onClick={getSimilarPapers} allowDisabledFocus />
-                          </Stack>
-                        </React.Fragment>
-                        : null
-                    }
+                      <React.Fragment>
+                        <Stack horizontal verticalAlign="start" horizontalAlign="start" tokens={{ childrenGap: 8 }}>
+                          <Label>Dimensions</Label>
+                          <Dropdown
+                            label=""
+                            selectedKey={this.state.similarityType.key}
+                            // eslint-disable-next-line react/jsx-no-bind
+                            onChange={(event: React.FormEvent<HTMLDivElement>, item: IDropdownOption) => { this.setState({ similarityType: item }) }}
+                            options={similarityTypeDropdownOptions}
+                            styles={{ root: { zIndex: 2 } }}
+                          />
+                          <Label>Count</Label>
+                          <Dropdown
+                            label=""
+                            selectedKey={this.state.maxSimilarPapers.key}
+                            // eslint-disable-next-line react/jsx-no-bind
+                            onChange={(event: React.FormEvent<HTMLDivElement>, item: IDropdownOption) => { this.setState({ maxSimilarPapers: item }) }}
+                            options={maxSimilarPapersDropdownOptions}
+                          />
+                          {
+                            this.state.dataSimilarPayload.length > 0 ?
+                            <PrimaryButton text="Find Similar Papers" onClick={getSimilarPapers} allowDisabledFocus /> :
+                            <PrimaryButton text="Find Similar Papers" onClick={getSimilarPapers} allowDisabledFocus disabled/>
+                          }
+                        </Stack>
+                      </React.Fragment>
                     <div className="m-t-md"></div>
                     <SmartTable props={similarPapersPayloadTableProps}></SmartTable>
                   </PivotItem>
@@ -1392,7 +1394,6 @@ class App extends React.Component<{}, AppState> {
               </Pivot>
             </div>
           </Split>
-
           <Split
             sizes={[50, 50]}
             direction="horizontal"
@@ -1420,10 +1421,89 @@ class App extends React.Component<{}, AppState> {
               <div>
                 <div style={{ display: 'flex' }}>
                   <Label style={{ fontSize: "1.2rem" }}> LLM Feedback </Label>
+                  <div>
+                    <DefaultButton
+                      text="ALL"
+                      iconProps={{iconName: "Locate"}}
+                      onClick={() => {}} 
+                      allowDisabledFocus 
+                      styles={{root: {padding:0, margin: '0 0.5em', minWidth: 0, display: "inline-block", verticalAlign: "top"}, icon: {color: "#116EBE"}}}
+                    />
+                    <DefaultButton
+                      text="ALL"
+                      iconProps={{iconName: "PlusCircle"}}
+                      onClick={() => {}} 
+                      allowDisabledFocus 
+                      styles={{root: {padding:0, margin: '0 0.5em', minWidth: 0, display: "inline-block", verticalAlign: "top"}, icon: {color: "#116EBE"}}}
+                    />
+                    <DefaultButton
+                      text="ALL"
+                      iconProps={{iconName: "Save"}}
+                      onClick={() => {}} 
+                      allowDisabledFocus 
+                      styles={{root: {padding:0, margin: '0 0.5em', minWidth: 0, display: "inline-block", verticalAlign: "top"}, icon: {color: "#116EBE"}}}
+                    />
+                  </div>
                 </div>
+
+                <div>
+                {
+                  this.state.chatSelectedPaper.length > 0 &&
+                  <div>
+                    <span style={{fontWeight: 900}}>Current Selected Paper:</span> 
+                    <span style={{color: 'blue'}}>{this.state.chatSelectedPaper}</span>
+                    <span>
+                      <DefaultButton
+                        iconProps={{iconName: "Locate"}}
+                        onClick={() => {
+                          let papers = this.state.dataAll.filter(i => i.Title === `${this.state.chatSelectedPaper}.`)
+                          if (papers.length > 0) {
+                            addToSelectNodeIDs(papers.map((d) => d["ID"]), "scatterplot")
+                          }
+                        }} 
+                        allowDisabledFocus 
+                        styles={{root: {padding:0, margin: '0 0.5em', minWidth: 0, display: "inline-block", verticalAlign: "top"}, icon: {color: "#116EBE"}}}
+                      />
+                      <DefaultButton
+                        iconProps={{iconName: "PlusCircle"}}
+                        onClick={() => {
+                          let papers = this.state.dataAll.filter(i => i.Title === `${this.state.chatSelectedPaper}.`)
+                          if (papers.length > 0) {
+                            addToSimilarInputPapers(papers[0])
+                          }
+                        }} 
+                        allowDisabledFocus 
+                        styles={{root: {padding:0, margin: '0 0.5em', minWidth: 0, display: "inline-block", verticalAlign: "top"}, icon: {color: "#116EBE"}}}
+                      />
+                      <DefaultButton
+                        iconProps={{iconName: "Save"}}
+                        onClick={() => {
+                          let papers = this.state.dataAll.filter(i => i.Title === `${this.state.chatSelectedPaper}.`)
+                          if (papers.length > 0) {
+                            addToSavedPapers(papers[0])
+                          }
+                        }} 
+                        allowDisabledFocus 
+                        styles={{root: {padding:0, margin: '0 0.5em', minWidth: 0, display: "inline-block", verticalAlign: "top"}, icon: {color: "#116EBE"}}}
+                      />
+                    </span>
+                  </div>
+                }
+                </div>
+
                 <Markdown
                   components={{
-                    strong: ({node, ...props}) => <span style={{color: 'blue', fontWeight: 'bold'}} {...props} />
+                    strong: ({node, ...props}) => {
+                      return (
+                        <span
+                          id={`${props.children[0]}`}
+                          style={{color: 'blue', fontWeight: 'bold', cursor: 'pointer' }} {...props} 
+                          onClick={() => {
+                            this.setState({chatSelectedPaper: `${props.children[0]}`})
+                          }}
+                        />
+                      )
+                    }
                   }}
                 >{this.state.chatResponse}</Markdown>
               </div>
