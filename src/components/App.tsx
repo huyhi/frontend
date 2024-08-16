@@ -80,6 +80,8 @@ interface AppState {
   dataSources: Array<any>;
   dataYears: Array<any>;
   dataAll: Array<any>;
+  pointsAll: Array<any>;
+  metaData: {};
   dataSimilarPayload: Array<any>;
   dataSimilar: Array<any>;
   dataSaved: Array<any>;
@@ -236,6 +238,8 @@ class App extends React.Component<{}, AppState> {
       dataSources: [],
       dataYears: [],
       dataAll: [],
+      pointsAll: [],
+      metaData: {},
       dataSimilarPayload: [],
       dataSimilarPayloadID: [],
       dataSimilar: [],
@@ -317,8 +321,70 @@ class App extends React.Component<{}, AppState> {
       });
   }
 
+  getUmapPoints = () => {
+    this.setState({ spinner: true });
+    let parent = this;
+
+    const requestOptions = {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
+    };
+    fetch(baseUrl + 'getUmapPoints', requestOptions)
+      .then(function (response) {
+        return response.text();
+      }).then(function (data) {
+        const _pointsAll = JSON.parse(data);
+        const _paperNoEmbeddings = {
+          "specter": [],
+          "glove": [],
+          "ada": []
+        }
+        _pointsAll.forEach(_d => {
+          if (!("specter_umap" in _d && Array.isArray(_d["specter_umap"]) && _d["specter_umap"].length == 2)) {
+            _paperNoEmbeddings["specter"].push(_d["ID"]);
+          }
+          if (!("glove_umap" in _d && Array.isArray(_d["glove_umap"]) && _d["glove_umap"].length == 2)) {
+            _paperNoEmbeddings["glove"].push(_d["ID"]);
+          }
+          if (!("ada_umap" in _d && Array.isArray(_d["ada_umap"]) && _d["ada_umap"].length == 2)) {
+            _paperNoEmbeddings["ada"].push(_d["ID"]);
+          }
+        });
+
+        parent.updateStateProp("paperNoEmbeddings", _paperNoEmbeddings["glove"], "glove");
+        parent.updateStateProp("paperNoEmbeddings", _paperNoEmbeddings["specter"], "specter");
+        parent.updateStateProp("paperNoEmbeddings", _paperNoEmbeddings["ada"], "ada");
+        parent.setState({
+          "pointsAll": _pointsAll,
+          "spinner": false
+        });
+      });
+  }
+
+  getMetaData = () => {
+    this.setState({ spinner: true });
+    let parent = this;
+
+    const requestOptions = {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
+    };
+    fetch(baseUrl + 'getMetaData', requestOptions)
+      .then(function (response) {
+        return response.text();
+      }).then(function (data) {
+        const _metaData = JSON.parse(data);
+        parent.setState({
+          "metaData": _metaData,
+          "spinner": false
+        });
+      });
+  }
+
   componentDidMount() {
-    this.getData();
+    this.getData()
+    this.getUmapPoints()
+    this.getMetaData()
   }
 
   public render() {
@@ -840,7 +906,8 @@ class App extends React.Component<{}, AppState> {
         keyword: this.state.dataKeywords,
         author: this.state.dataAuthors,
         source: this.state.dataSources,
-        year: this.state.dataYears
+        year: this.state.dataYears,
+        meta: this.state.metaData
       },
       columnsVisible: this.state.columnsVisible["all"],
       updateVisibleColumns: (columnId) => { updateVisibleColumns(columnId, "all"); },
@@ -1358,7 +1425,8 @@ class App extends React.Component<{}, AppState> {
                     dataSaved: this.state.dataSaved,
                     dataSimilarPayload: this.state.dataSimilarPayload,
                     dataSimilar: this.state.dataSimilar,
-                    data: this.state.dataAll,
+                    // data: this.state.dataAll,
+                    data: this.state.pointsAll,
                     selectNodeIDs: this.state.selectNodeIDs,
                     addToSelectNodeIDs: addToSelectNodeIDs,
                     embeddingType: this.state.embeddingType.key as string,
@@ -1403,6 +1471,17 @@ class App extends React.Component<{}, AppState> {
             cursor="col-resize"
           >
             <div className="split p-md p-b-0">
+              <div className="history">
+                {this.state.chatHistory.map(historyItem => {
+                  return (
+                    <div>
+                      <div> human: {historyItem.human} </div> 
+                      <div> ai: {historyItem.ai} </div> 
+                    </div>
+                  )
+                })}
+              </div>
+
               <div style={{ display: 'flex' }}>
                 <Label style={{ fontSize: "1.2rem" }}> Chat with your data here</Label>
                 &nbsp;&nbsp;
@@ -1415,9 +1494,7 @@ class App extends React.Component<{}, AppState> {
                 </DefaultButton>
               </div>
               <TextField style={{ marginBottom: "2em" }} multiline rows={10} defaultValue={""} onChange={onChangeChatText} />
-            </div>
 
-            <div className="split p-md p-b-0">
               <div>
                 <div style={{ display: 'flex' }}>
                   <Label style={{ fontSize: "1.2rem" }}> LLM Feedback </Label>
@@ -1507,6 +1584,10 @@ class App extends React.Component<{}, AppState> {
                   }}
                 >{this.state.chatResponse}</Markdown>
               </div>
+            </div>
+
+            <div className="split p-md p-b-0">
+
             </div>
           </Split>
         </LoadingOverlay>
