@@ -400,10 +400,13 @@ function MultiSelectTokensColumnFilter({
 }
 
 function MultiSelectColumnFilter({
-  column: { filterValue, setFilter, preFilteredRows, id }
+  column: { filterValue, setFilter, preFilteredRows, id, metadata }
 }) {
   // Calculate the options for filtering
   // using the preFilteredRows
+
+  console.log('inner metadata', metadata)
+
   const options = React.useMemo(() => {
     const options = new Set();
     preFilteredRows.forEach(row => {
@@ -429,6 +432,7 @@ function MultiSelectColumnFilter({
   const [multiselectSelectedOptions, setMultiselectSelectedOptions]:any = React.useState(filterValue);
 
   const onChange = (_selOpts): void => {
+    // TODO Call /getPaper
     setFilter(_selOpts.map((o) => { return o.value }));
   }
 
@@ -1310,7 +1314,18 @@ export const SmartTable: React.FC<{props: SmartTableProps}> = observer(({props})
       const columnHeader = {Header: c, accessor: c};
       const columnWidth = columnWidths[c];
       const columnFilter = filterMapping(columnFilterTypes[c]);
-      return {...columnHeader, ...columnWidth, ...columnFilter};
+
+      let columnMeta = {metadata: ''}
+      if (tableData['metaData'] === undefined) {
+        columnMeta = {metadata: ''}
+      } else {
+        columnMeta = {metadata: tableData['metaData'][c]}
+      }
+
+      console.log('outer metadata',{columnMeta})
+      // console.log({...columnHeader, ...columnWidth, ...columnFilter, ...columnMeta})
+
+      return {...columnHeader, ...columnWidth, ...columnFilter, ...columnMeta};
     }), []);
 
     // We need to keep the table from resetting the pageIndex when we

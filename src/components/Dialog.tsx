@@ -1,44 +1,83 @@
 import * as React from "react";
-import { hot } from "react-hot-loader";
 import "./../assets/scss/App.scss";
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCaretDown, faCaretUp, faTimes, faTrash, faPlus, faPlusCircle, faSearch, faExternalLinkAlt, faClipboardList, faEyeSlash, faFileExport, faKey, faHandPointer, faKeyboard, faMouse, faGraduationCap, faMapMarkerAlt, faQuestionCircle, faCheckCircle, faArrowAltCircleRight, faExpand, faMinus, faRocket } from '@fortawesome/free-solid-svg-icons';
-import { Callout, CommandBar, DefaultButton, DelayedRender, Dropdown, ICommandBarItemProps, Icon, IconButton, IDropdownOption, IPivotItemProps, Label, Panel, PanelType, Pivot, PivotItem, PivotLinkFormat, PivotLinkSize, PrimaryButton, registerIcons, Stack, Text, TextField } from "@fluentui/react";
-import SmartTable, { SmartTableProps } from "./SmartTable";
-import LoadingOverlay from 'react-loading-overlay';
-import Split from 'react-split';
+import { DefaultButton, Label, TextField } from "@fluentui/react";
 import Markdown from 'react-markdown'
-import { initializeIcons } from '@uifabric/icons';
-import logo from './../assets/img/vitality-logo-2.png';
-import gtLogo from './../assets/img/gt-logo.png';
-import northwesternLogo from './../assets/img/northwestern-logo.png';
-import unccLogo from './../assets/img/uncc-logo.png';
-import emoryLogo from './../assets/img/emory-logo.png';
 import { observer } from "mobx-react";
+import { getPaperByTitle } from "./../request";
 
-import visConferenceLogo from './../assets/img/ieeevis2021-logo.png';
 const baseUrl = "http://localhost:3000/";
 
+export const Dialog = observer(({props}) => {
+  const [chatText, setChatText] = React.useState('')
+  const [chatHistory, setChatHistory] = React.useState([])
+  const [chatSelectedPaper, setChatSelectedPaper] = React.useState('')
+  const [chatResponse, setChatResponse] = React.useState('')
+  const [chatResponsing, setChatResponsing] = React.useState(false)
+ 
+  const onChangeChatText = (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newText: string): void => {
+    setChatText(newText)
+  }
 
-interface AppProps {
-}
+  const chatRequest = () => {
+    setChatSelectedPaper('')
+    setChatResponse('RUNNING ... ...')
+    setChatResponsing(true)
 
-export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
-
-  const [chatHistory, setChatHistory] = React.useState([]);
+    fetch(`${baseUrl}chat`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        text: chatText,
+        chatHistory: chatHistory
+      })
+    }).then(response => {
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let partial = '';
+      setChatResponse('')
+    
+      const readChunk = ({ done, value }) => {
+        if (done) {
+          if (partial) {
+            setChatResponse(`${partial}`)
+          }
+          setChatResponsing(false)
+          // maximum to save latest 3 dialog in chatHistory array
+          if (chatHistory.length >= 3) {
+            setChatHistory(chatHistory.slice(1).concat([{
+              'human': chatText,
+              'ai': chatResponse
+            }]))
+          } else {
+            setChatHistory(chatHistory.concat([{
+              'human': chatText,
+              'ai': chatResponse
+            }]))
+          }
+          return;
+        }
+        partial += decoder.decode(value);
+        setChatResponse(`${partial}`)
+        reader.read().then(readChunk) // Call readChunk recursively with next chunk
+      }
+      reader.read().then(readChunk)
+    })
+  }
 
 
   return (
     <div className="split p-md p-b-0">
       <div className="history">
-        {this.state.chatHistory.map(historyItem => {
-          return (
-            <div>
-              <div> human: {historyItem.human} </div> 
-              <div> ai: {historyItem.ai} </div> 
-            </div>
-          )
-        })}
+        {
+          chatHistory.map(historyItem => {
+            return (
+              <div>
+                <div> human: {historyItem.human} </div> 
+                <div> ai: {historyItem.ai} </div> 
+              </div>
+            )
+          })
+        }
       </div>
 
       <div style={{ display: 'flex' }}>
@@ -84,18 +123,25 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
 
         <div>
         {
-          this.state.chatSelectedPaper.length > 0 &&
+          chatSelectedPaper.length > 0 &&
           <div>
             <span style={{fontWeight: 900}}>Current Selected Paper:</span> 
-            <span style={{color: 'blue'}}>{this.state.chatSelectedPaper}</span>
+            <span style={{color: 'blue'}}>{chatSelectedPaper}</span>
             <span>
               <DefaultButton
                 iconProps={{iconName: "Locate"}}
                 onClick={() => {
-                  let papers = this.state.dataAll.filter(i => i.Title === `${this.state.chatSelectedPaper}.`)
-                  if (papers.length > 0) {
-                    addToSelectNodeIDs(papers.map((d) => d["ID"]), "scatterplot")
-                  }
+                  // TODO use http filter
+                  // let papers = this.state.dataAll.filter(i => i.Title === `${this.state.chatSelectedPaper}.`)
+                  // if (papers.length > 0) {
+                  //   addToSelectNodeIDs(papers.map((d) => d["ID"]), "scatterplot")
+                  // }
+                  getPaperByTitle(chatSelectedPaper)
+                  .then((papers) => {
+                    if (papers.length > 0) {
+                      props['addToSelectNodeIDs'](papers.map((d) => d["ID"]), "scatterplot")
+                    }
+                  })
                 }} 
                 allowDisabledFocus 
                 styles={{root: {padding:0, margin: '0 0.5em', minWidth: 0, display: "inline-block", verticalAlign: "top"}, icon: {color: "#116EBE"}}}
@@ -103,10 +149,17 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
               <DefaultButton
                 iconProps={{iconName: "PlusCircle"}}
                 onClick={() => {
-                  let papers = this.state.dataAll.filter(i => i.Title === `${this.state.chatSelectedPaper}.`)
-                  if (papers.length > 0) {
-                    addToSimilarInputPapers(papers[0])
-                  }
+                  // TODO use http filter
+                  // let papers = this.state.dataAll.filter(i => i.Title === `${this.state.chatSelectedPaper}.`)
+                  // if (papers.length > 0) {
+                  //   addToSimilarInputPapers(papers[0])
+                  // }
+                  getPaperByTitle(chatSelectedPaper)
+                  .then((papers) => {
+                    if (papers.length > 0) {
+                      props['addToSimilarInputPapers'](papers[0])
+                    }
+                  })
                 }} 
                 allowDisabledFocus 
                 styles={{root: {padding:0, margin: '0 0.5em', minWidth: 0, display: "inline-block", verticalAlign: "top"}, icon: {color: "#116EBE"}}}
@@ -114,10 +167,17 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
               <DefaultButton
                 iconProps={{iconName: "Save"}}
                 onClick={() => {
-                  let papers = this.state.dataAll.filter(i => i.Title === `${this.state.chatSelectedPaper}.`)
-                  if (papers.length > 0) {
-                    addToSavedPapers(papers[0])
-                  }
+                  // TODO use http filter
+                  // let papers = this.state.dataAll.filter(i => i.Title === `${this.state.chatSelectedPaper}.`)
+                  // if (papers.length > 0) {
+                  //   addToSavedPapers(papers[0])
+                  // }
+                  getPaperByTitle(chatSelectedPaper)
+                  .then((papers) => {
+                    if (papers.length > 0) {
+                      props['addToSavedPapers'](papers[0])
+                    }
+                  })
                 }} 
                 allowDisabledFocus 
                 styles={{root: {padding:0, margin: '0 0.5em', minWidth: 0, display: "inline-block", verticalAlign: "top"}, icon: {color: "#116EBE"}}}
@@ -135,13 +195,13 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
                   id={`${props.children[0]}`}
                   style={{color: 'blue', fontWeight: 'bold', cursor: 'pointer' }} {...props} 
                   onClick={() => {
-                    this.setState({chatSelectedPaper: `${props.children[0]}`})
+                    setChatSelectedPaper(`${props.children[0]}`)
                   }}
                 />
               )
             }
           }}
-        >{this.state.chatResponse}</Markdown>
+        >{chatResponse}</Markdown>
       </div>
     </div>
   )
