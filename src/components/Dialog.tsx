@@ -8,20 +8,22 @@ import { getPaperByTitle } from "./../request";
 const baseUrl = "http://localhost:3000/";
 
 export const Dialog = observer(({props}) => {
-  const [chatText, setChatText] = React.useState('')
-  const [chatHistory, setChatHistory] = React.useState([])
-  const [chatSelectedPaper, setChatSelectedPaper] = React.useState('')
-  const [chatResponse, setChatResponse] = React.useState('')
-  const [chatResponsing, setChatResponsing] = React.useState(false)
+  const { chatText, chatHistory, chatResponse, chatSelectedPaper, updateDialogState } = props;
+  // const [chatText, setChatText] = React.useState('')
+  // const [chatHistory, setChatHistory] = React.useState([])
+  // const [chatSelectedPaper, setChatSelectedPaper] = React.useState('')
+  // const [chatResponse, setChatResponse] = React.useState('')
+  // const [chatResponsing, setChatResponsing] = React.useState(false)
  
   const onChangeChatText = (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newText: string): void => {
-    setChatText(newText)
+    updateDialogState({ chatText: newText });
   }
 
   const chatRequest = () => {
-    setChatSelectedPaper('')
-    setChatResponse('RUNNING ... ...')
-    setChatResponsing(true)
+    updateDialogState({ chatSelectedPaper: '', chatResponse: 'RUNNING ... ...' });
+    // setChatSelectedPaper('')
+    // setChatResponse('RUNNING ... ...')
+    // setChatResponsing(true)
 
     fetch(`${baseUrl}chat`, {
       method: 'POST',
@@ -34,30 +36,36 @@ export const Dialog = observer(({props}) => {
       const reader = response.body.getReader();
       const decoder = new TextDecoder('utf-8');
       let partial = '';
-      setChatResponse('')
+      // setChatResponse('')
+      updateDialogState({ chatResponse: '' });
     
       const readChunk = ({ done, value }) => {
         if (done) {
           if (partial) {
-            setChatResponse(`${partial}`)
+            // setChatResponse(`${partial}`)
+            updateDialogState({ chatResponse: partial });
           }
-          setChatResponsing(false)
-          // maximum to save latest 3 dialog in chatHistory array
-          if (chatHistory.length >= 3) {
-            setChatHistory(chatHistory.slice(1).concat([{
-              'human': chatText,
-              'ai': chatResponse
-            }]))
-          } else {
-            setChatHistory(chatHistory.concat([{
-              'human': chatText,
-              'ai': chatResponse
-            }]))
-          }
+          // setChatResponsing(false)
+          const newChatHistory = [...chatHistory, { human: chatText, ai: partial }];
+          updateDialogState({ chatHistory: newChatHistory })
           return;
+          // maximum to save latest 3 dialog in chatHistory array
+          // if (chatHistory.length >= 3) {
+          //   setChatHistory(chatHistory.slice(1).concat([{
+          //     'human': chatText,
+          //     'ai': chatResponse
+          //   }]))
+          // } else {
+          //   setChatHistory(chatHistory.concat([{
+          //     'human': chatText,
+          //     'ai': chatResponse
+          //   }]))
+          // }
+          // return;
         }
         partial += decoder.decode(value);
-        setChatResponse(`${partial}`)
+        updateDialogState({ chatResponse: partial });
+        // setChatResponse(`${partial}`)
         reader.read().then(readChunk) // Call readChunk recursively with next chunk
       }
       reader.read().then(readChunk)
@@ -195,7 +203,8 @@ export const Dialog = observer(({props}) => {
                   id={`${props.children[0]}`}
                   style={{color: 'blue', fontWeight: 'bold', cursor: 'pointer' }} {...props} 
                   onClick={() => {
-                    setChatSelectedPaper(`${props.children[0]}`)
+                    // setChatSelectedPaper(`${props.children[0]}`)
+                    updateDialogState({ chatSelectedPaper: `${props.children[0]}` });
                   }}
                 />
               )
