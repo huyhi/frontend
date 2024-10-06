@@ -408,6 +408,7 @@ function MultiSelectColumnFilter({
   console.log('inner metadata', metadata)
 
   const options = React.useMemo(() => {
+    const validMetadata = Array.isArray(metadata) ? metadata : [];
     const options = new Set();
     preFilteredRows.forEach(row => {
       if(row.values[id].length > 0){
@@ -415,54 +416,54 @@ function MultiSelectColumnFilter({
       }
     })
     return [...options.values()].sort(function(a:any, b:any){return (a < b) ? -1 : (a > b) ? 1 : 0;});
-  }, [preFilteredRows]);
+  }, [metadata,preFilteredRows]);
 
   // Create Options
-  const _options = React.useMemo(() => {
-    return options.map((o:string) => { return {label: o, value:o};});
-  }, [options]);
+  // const _options = React.useMemo(() => {
+  //   return options.map((o:string) => { return {label: o, value:o};});
+  // }, [options]);
 
-  const _filterOptions = React.useMemo(() => {
-    return createFilterOptions({
-      options: _options,
-      indexStrategy: indexStrategy
-    });
-  }, [_options]);
+  // const _filterOptions = React.useMemo(() => {
+  //   return createFilterOptions({
+  //     options: _options,
+  //     indexStrategy: indexStrategy
+  //   });
+  // }, [_options]);
 
-  const [multiselectSelectedOptions, setMultiselectSelectedOptions]:any = React.useState(filterValue);
-
+  // const [multiselectSelectedOptions, setMultiselectSelectedOptions]:any = React.useState(filterValue);
+  const [multiselectTokenSelectedOptions, setMultiSelectTokenSelectedOptions] = React.useState<any[]>([]);
   const onChange = (_selOpts): void => {
     // TODO Call /getPaper
+    const filteredValues = preFilteredRows
+        .filter(row => row.values[id]?.some(r => _selOpts.some(o => o.value === r)))
+        .map(row => row.values[id]);
+    setMultiSelectTokenSelectedOptions(_selOpts);
     setFilter(_selOpts.map((o) => { return o.value }));
   }
 
   React.useEffect(() => {
-    if(filterValue && filterValue.length > 0){
-      const _selOpts = [];
-      if(Array.isArray(filterValue)){
-        filterValue.forEach((f) => {
-          _selOpts.push({label: f, value: f});
-        });
-        setMultiselectSelectedOptions(_selOpts);        
+      if (filterValue) {
+          const _selOptions = Array.isArray(filterValue) ? filterValue.map(f => ({ label: f, value: f })) : [];
+          setMultiSelectTokenSelectedOptions(_selOptions);
       }
-    }else{
-      setMultiselectSelectedOptions(undefined);
-    }
   }, [filterValue]);
+  const _options = React.useMemo(() => {
+      return options.map((o: string) => ({ label: o, value: o }));
+  }, [options]);
 
   // Render a multi-select box
   return (
     <VirtualizedSelect
       options={_options}
-      filterOptions={_filterOptions}
+      // filterOptions={_filterOptions}
       multi
       isSearchable={true}
       clearable={true}
       placeholder={"Search"}
       maxHeight={100}
-      value={multiselectSelectedOptions}
+      value={multiselectTokenSelectedOptions}
       onChange={onChange}
-      defaultValue={multiselectSelectedOptions}
+      defaultValue={multiselectTokenSelectedOptions}
     />
   )
 }
@@ -1280,7 +1281,17 @@ export interface SmartTableProps {
   columnsVisible: Array<string>;
   columnWidths: {};
   columnFilterTypes: {};
-  tableData: {};
+  tableData: {
+      all: any[],
+      saved: any[],
+      similarPayload: any[],
+      similar: any[],
+      keyword: any[],
+      author: any[],
+      source: any[],
+      year: any[],
+      metaData?: Record<string, any>  // Add this to define metaData
+  };
   dataFiltered: {};
   tableType: string;
   addToSimilarInputPapers?: Function;
@@ -1314,19 +1325,19 @@ export const SmartTable: React.FC<{props: SmartTableProps}> = observer(({props})
       const columnHeader = {Header: c, accessor: c};
       const columnWidth = columnWidths[c];
       const columnFilter = filterMapping(columnFilterTypes[c]);
-
-      let columnMeta = {metadata: ''}
-      if (tableData['metaData'] === undefined) {
-        columnMeta = {metadata: ''}
-      } else {
-        columnMeta = {metadata: tableData['metaData'][c]}
-      }
+      const columnMeta = tableData?.metaData ? tableData.metaData[c] : '';
+      // let columnMeta = {metadata: ''}
+      // if (tableData['metaData'] === undefined) {
+      //   columnMeta = {metadata: ''}
+      // } else {
+      //   columnMeta = {metadata: tableData['metaData'][c]}
+      // }
 
       console.log('outer metadata',{columnMeta})
       // console.log({...columnHeader, ...columnWidth, ...columnFilter, ...columnMeta})
 
-      return {...columnHeader, ...columnWidth, ...columnFilter, ...columnMeta};
-    }), []);
+      return {...columnHeader, ...columnWidth, ...columnFilter, metadata:columnMeta};
+    }), [columnIds, columnWidths, columnFilterTypes, tableData.metaData]);
 
     // We need to keep the table from resetting the pageIndex when we
     // Update data. So we can keep track of that flag with a ref.

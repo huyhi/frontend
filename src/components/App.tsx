@@ -131,6 +131,7 @@ interface AppState {
     dataAuthors: Array<any>;
     dataSources: Array<any>;
     dataYears: Array<any>;
+    dataTitles: Array<any>;
     dataAll: Array<any>;
     pointsAll: Array<any>;
     metaData: {};
@@ -302,6 +303,7 @@ class App extends React.Component<{}, AppState> {
             dataAuthors: [],
             dataSources: [],
             dataYears: [],
+            dataTitles: [],
             dataAll: [],
             pointsAll: [],
             metaData: {},
@@ -485,6 +487,10 @@ class App extends React.Component<{}, AppState> {
             const _metaData = JSON.parse(data);
             parent.setState({
                 "metaData": _metaData,
+                "dataAuthors": _metaData.authors,  // Store authors metadata
+                "dataSources": _metaData.sources,  // Store sources metadata
+                "dataKeywords": _metaData.keywords,
+                "dataTitles": _metaData.titles,
                 "spinner": false
             });
         });
