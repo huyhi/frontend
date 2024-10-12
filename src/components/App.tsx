@@ -162,7 +162,9 @@ interface AppState {
     tabs: TabType[];
     activeKey: string;
     dialogStates: { [key: string]: any };
-    chatSelectedPaper: string,
+    chatSelectedPaper: string;
+    offset: number;
+    hasMoreData: boolean;
 
 }
 
@@ -338,7 +340,24 @@ class App extends React.Component<{}, AppState> {
             activeKey: '1', // Track the active tab
             dialogStates: {
                 '1': {chatText: '', chatHistory: [], chatResponse: '', chatSelectedPaper: ''}  // Initial state for the first dialog
-            }
+            },
+            offset: 0,
+            hasMoreData: true
+        }
+    }
+    loadMoreData = async () => {
+        const { offset, hasMoreData } = this.state;
+        const limit = 1000; // Specify limit of records to fetch
+
+        if (hasMoreData) {
+            const response = await fetch(`${baseUrl}getPapers?offset=${offset}&limit=${limit}`);
+            const newData = await response.json();
+
+            this.setState((prevState) => ({
+                dataAll: [...prevState.dataAll, ...newData],
+                offset: prevState.offset + limit,
+                hasMoreData: newData.length === limit, // Check if more data is available
+            }));
         }
     }
 
@@ -1520,7 +1539,7 @@ class App extends React.Component<{}, AppState> {
                             <Markdown>{this.state.summarizeResponse}</Markdown></div>
                     </Panel>
                     <div className="m-t-md p-md">
-                        <SmartTable props={allPapersTableProps}></SmartTable>
+                        <SmartTable props={{ ...allPapersTableProps, loadMoreData: this.loadMoreData }}></SmartTable>
                     </div>
                     <Split
                         sizes={[33, 39, 28]}
