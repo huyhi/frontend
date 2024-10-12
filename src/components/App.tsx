@@ -132,6 +132,8 @@ interface AppState {
     dataSources: Array<any>;
     dataYears: Array<any>;
     dataAll: Array<any>;
+    offset:number;
+    hasMoreData: boolean;
     pointsAll: Array<any>;
     metaData: {};
     dataSimilarPayload: Array<any>;
@@ -303,6 +305,8 @@ class App extends React.Component<{}, AppState> {
             dataSources: [],
             dataYears: [],
             dataAll: [],
+            offset: 0,
+            hasMoreData: true,
             pointsAll: [],
             metaData: {},
             dataSimilarPayload: [],
@@ -339,7 +343,21 @@ class App extends React.Component<{}, AppState> {
             }
         }
     }
+    // Function to load more data from backend
+    loadMoreData = async () => {
+        const { offset, hasMoreData } = this.state;
+        const limit = 1000; // Number of records to fetch per call
 
+        if (hasMoreData) {
+            const response = await fetch(`${baseUrl}getPapers?offset=${offset}&limit=${limit}`);
+            const newData = await response.json();
+            this.setState((prevState) => ({
+                dataAll: [...prevState.dataAll, ...newData], // Append new data
+                offset: prevState.offset + limit, // Update offset for pagination
+                hasMoreData: newData.length === limit, // Check if more data is available
+            }));
+        }
+    }
     addNewTab = () => {
         const newId = (this.state.tabs.length + 1).toString(); // Generate new ID
         this.setState((prevState) => ({
@@ -1017,6 +1035,7 @@ class App extends React.Component<{}, AppState> {
                 year: this.state.dataYears,
                 metaData: this.state.metaData
             },
+            loadMoreData: this.loadMoreData,
             columnsVisible: this.state.columnsVisible["all"],
             updateVisibleColumns: (columnId) => {
                 updateVisibleColumns(columnId, "all");
@@ -1514,7 +1533,7 @@ class App extends React.Component<{}, AppState> {
                             <Markdown>{this.state.summarizeResponse}</Markdown></div>
                     </Panel>
                     <div className="m-t-md p-md">
-                        <SmartTable props={allPapersTableProps}></SmartTable>
+                        <SmartTable props={{ ...allPapersTableProps, loadMoreData: this.loadMoreData }}></SmartTable>
                     </div>
                     <Split
                         sizes={[33, 39, 28]}
