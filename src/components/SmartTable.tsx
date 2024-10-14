@@ -1053,7 +1053,7 @@ function Table({
         if (tableType == "similar" || tableType == "similarPayload") {
             return 200
         }
-        return 235
+        return 325
     }
     const handleLoadMoreData = (event) => {
         event.persist(); // Prevents React from reusing the event object

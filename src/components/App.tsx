@@ -1524,7 +1524,11 @@ class App extends React.Component<{}, AppState> {
                                 background: "rgba(0,0,0,0.9)",
                                 padding: 8,
                                 paddingBottom: 0,
-                                borderBottom: "1px solid #ededed"
+                                marginTop:-7,
+                                borderBottom: "1px solid #ededed",
+                                height:60,
+                                display: 'flex',
+                                alignItems: 'center',
                             },
                         }}
                     />
