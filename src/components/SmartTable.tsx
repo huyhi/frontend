@@ -465,15 +465,17 @@ function MultiSelectColumnFilter({
 
     // const [multiselectSelectedOptions, setMultiselectSelectedOptions]:any = React.useState(filterValue);
     const [multiselectTokenSelectedOptions, setMultiSelectTokenSelectedOptions] = React.useState<any[]>([]);
-    const onChange = (_selOpts): void => {
+    const onChange = (selectedOptions): void => {
         // TODO Call /getPaper
         const filteredValues = preFilteredRows
-            .filter(row => row.values[id]?.some(r => _selOpts.some(o => o.value === r)))
+            .filter(row => {
+                const rowValues = Array.isArray(row.values[id]) ? row.values[id] : [row.values[id]];
+                return rowValues.some(r => selectedOptions.some(option => option.value === r));
+            })
             .map(row => row.values[id]);
-        setMultiSelectTokenSelectedOptions(_selOpts);
-        setFilter(_selOpts.map((o) => {
-            return o.value
-        }));
+
+        setMultiSelectTokenSelectedOptions(selectedOptions);
+        setFilter(selectedOptions.map(option => option.value));
     }
 
     React.useEffect(() => {
