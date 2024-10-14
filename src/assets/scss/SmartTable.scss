@@ -14,3 +14,32 @@
   border-color: #999 !important;
   border-radius: 0 !important;
 }
+
+
+/* Styles for the Load More button */
+.load-more-container {
+  display: flex;
+  justify-content: center; /* Center horizontally */
+  margin-top: 1em;
+}
+
+.load-more-button {
+  background-color: white;
+  color: gray;
+  border: 1px solid gray;
+  transition: background-color 0.3s, color 0.3s; /* Add smooth transition */
+}
+
+.load-more-button.loading {
+  background-color: gray;
+  color: white;
+  border: none;
+}
+
+.load-more-button:hover:not(.loading) {
+  background-color: lightgray;
+}
+
+.load-more-button:focus {
+  outline: none;
+}

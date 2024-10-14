@@ -4,6 +4,8 @@ import * as React from "react";
 import {VariableSizeList} from 'react-window';
 import * as JsSearch from 'js-search';
 import styled from 'styled-components';
+import { Button } from 'react-bootstrap';
+
 import {
     useTable,
     useSortBy,
@@ -42,6 +44,7 @@ import "react-virtualized-select/styles.css";
 import VirtualizedSelect from 'react-virtualized-select';
 import createFilterOptions from "react-select-fast-filter-options";
 import * as d3 from 'd3';
+import {useCallback, useEffect, useState} from "react";
 
 const indexStrategy = new JsSearch.PrefixIndexStrategy();
 
@@ -576,18 +579,11 @@ function Table({
                    updateColumnSortByValues,
                    updateGlobalFilterValue,
                    openGScholar,
-                   loadMoreData
+                   loadMoreData,
+                   hasMoreData,
                }) {
 
-    const handleScroll = (event) => {
-        const {scrollTop, clientHeight, scrollHeight} = event.target;
-        if (scrollTop + clientHeight >= scrollHeight - 50) { // 50px before bottom
-            if (loadMoreData) {
-                loadMoreData();
-            }
-        }
-    };
-
+    const [isLoading, setIsLoading] = useState(false);
     const filterTypes = React.useMemo(
         () => ({
             multiple: (rows, id, filterValue) => {
@@ -1059,10 +1055,21 @@ function Table({
         }
         return 235
     }
+    const handleLoadMoreData = (event) => {
+        event.persist(); // Prevents React from reusing the event object
+
+        setIsLoading(true);
+        loadMoreData().then(() => {
+            setIsLoading(false);
+        }).finally(() => {
+            event.target.blur(); // Now safe to use the event object here
+        });
+    };
+
 
     // Render the UI for your table
     return (
-        <div {...getTableProps()} className="table" onScroll={handleScroll}>
+        <div {...getTableProps()} className="table">
 
             <Modal
                 styles={{main: {maxWidth: 700}}}
@@ -1343,6 +1350,18 @@ function Table({
                     >
                         {RenderRow}
                     </VariableSizeList>
+                    {hasMoreData && loadMoreData && (
+                        <div className="load-more-container">
+                            <Button
+                                onClick={handleLoadMoreData}
+                                disabled={isLoading}
+                                className={`load-more-button ${isLoading ? 'loading' : ''}`} /* Apply loading class conditionally */
+                            >
+                                {isLoading ? 'Loading...' : 'Load More'}
+                            </Button>
+                        </div>
+
+                    )}
                 </div>
             </div>
         </div>
@@ -1351,6 +1370,8 @@ function Table({
 
 export interface SmartTableProps {
     // State
+    loadMoreData?: () => Promise<void>;
+    hasMoreData?: boolean;
     globalFilterValue: Array<any>;
     columnFilterValues: Array<any>;
     columnSortByValues: Array<any>;
@@ -1394,7 +1415,6 @@ export interface SmartTableProps {
     hasEmbeddings: Function;
     openGScholar?: Function;
     isInSelectedNodeIDs?: Function;
-    loadMoreData?: () => void;
 }
 
 export const SmartTable: React.FC<{
@@ -1406,7 +1426,7 @@ export const SmartTable: React.FC<{
         columnFilterTypes, updateVisibleColumns, columnsVisible, updateColumnFilterValues,
         columnFilterValues, setFilteredPapers, updateColumnSortByValues, columnSortByValues,
         globalFilterValue, updateGlobalFilterValue, scrollToPaperID, addToSelectNodeIDs,
-        checkoutPapers, summarizePapers, literatureReviewPapers, embeddingType, hasEmbeddings, openGScholar, isInSelectedNodeIDs, loadMoreData
+        checkoutPapers, summarizePapers, literatureReviewPapers, embeddingType, hasEmbeddings, openGScholar, isInSelectedNodeIDs, loadMoreData,hasMoreData
     } = props;
 
     const data = tableData[tableType];
@@ -1500,6 +1520,7 @@ export const SmartTable: React.FC<{
                 literatureReviewPapers={literatureReviewPapers}
                 openGScholar={openGScholar}
                 loadMoreData={loadMoreData}
+                hasMoreData={hasMoreData}
             />
         </Styles>
     )

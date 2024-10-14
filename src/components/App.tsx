@@ -523,6 +523,7 @@ class App extends React.Component<{}, AppState> {
 
     public render() {
 
+
         const toggleIsCiteUsCalloutVisible = () => {
             this.setState({
                 isCiteUsCalloutVisible: !this.state.isCiteUsCalloutVisible
@@ -1028,6 +1029,8 @@ class App extends React.Component<{}, AppState> {
         }
 
         const allPapersTableProps: SmartTableProps = {
+            loadMoreData: this.loadMoreData,
+            hasMoreData: this.state.hasMoreData,
             tableType: "all",
             embeddingType: this.state.embeddingType.key as string,
             hasEmbeddings: hasEmbeddings,
@@ -1539,7 +1542,7 @@ class App extends React.Component<{}, AppState> {
                             <Markdown>{this.state.summarizeResponse}</Markdown></div>
                     </Panel>
                     <div className="m-t-md p-md">
-                        <SmartTable props={{ ...allPapersTableProps, loadMoreData: this.loadMoreData }}></SmartTable>
+                        <SmartTable props={allPapersTableProps}></SmartTable>
                     </div>
                     <Split
                         sizes={[33, 39, 28]}
