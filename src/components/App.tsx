@@ -520,6 +520,14 @@ class App extends React.Component<{}, AppState> {
         this.getUmapPoints()
         this.getMetaData()
     }
+    componentDidUpdate(prevProps, prevState) {
+        if (prevState.dataAuthors !== this.state.dataAuthors) {
+            console.log("dataAuthors updated:", this.state.dataAuthors);
+        }
+        if (prevState.dataSources !== this.state.dataSources) {
+            console.log("dataSources updated:", this.state.dataSources);
+        }
+    }
 
     public render() {
 
@@ -1082,6 +1090,8 @@ class App extends React.Component<{}, AppState> {
             isInSavedPapers: isInSavedPapers,
             openGScholar: openGScholar,
             isInSelectedNodeIDs: isInSelectedNodeIDs,
+            dataAuthors: this.state.dataAuthors,
+            dataSources:this.state.dataSources
         }
 
         const setScrollToPaperID = (_ID) => {

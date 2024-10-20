@@ -4,7 +4,7 @@ import * as React from "react";
 import {VariableSizeList} from 'react-window';
 import * as JsSearch from 'js-search';
 import styled from 'styled-components';
-import { Button } from 'react-bootstrap';
+import {Button} from 'react-bootstrap';
 
 import {
     useTable,
@@ -347,25 +347,34 @@ function NumberRangeColumnFilter({
 }
 
 function MultiSelectTokensColumnFilter({
-                                           column: {setFilter, preFilteredRows, id, filterValue}
+                                           column: {setFilter, preFilteredRows, id, filterValue},dataAuthors, dataSources
                                        }) {
     // Calculate the options for filtering
     // using the preFilteredRows
-    const options = React.useMemo(() => {
-        const options = new Set();
-        preFilteredRows.forEach(row => {
-            if ("values" in row && id in row["values"] && row["values"][id] != null) {
-                row.values[id].forEach((token) => {
-                    if (token && token.length > 0) {
-                        options.add(token);
-                    }
-                });
-            }
-        });
-        return [...options.values()].sort(function (a: any, b: any) {
-            return (a < b) ? -1 : (a > b) ? 1 : 0;
-        });
-    }, [preFilteredRows]);
+    let options = [];
+    if (id === 'Author' && dataAuthors) {
+        // Use the passed set of authors
+        options = [...new Set(dataAuthors)].sort();
+    } else if (id === 'Source' && dataSources) {
+        // Use the passed set of sources
+        options = [...new Set(dataSources)].sort();
+    } else {
+        options = React.useMemo(() => {
+            const options = new Set();
+            preFilteredRows.forEach(row => {
+                if ("values" in row && id in row["values"] && row["values"][id] != null) {
+                    row.values[id].forEach((token) => {
+                        if (token && token.length > 0) {
+                            options.add(token);
+                        }
+                    });
+                }
+            });
+            return [...options.values()].sort(function (a: any, b: any) {
+                return (a < b) ? -1 : (a > b) ? 1 : 0;
+            });
+        }, [preFilteredRows]);
+    }
 
     const [multiselectTokenSelectedOptions, setMultiSelectTokenSelectedOptions]: any = React.useState([]);
 
@@ -434,39 +443,35 @@ function MultiSelectTokensColumnFilter({
 }
 
 function MultiSelectColumnFilter({
-                                     column: {filterValue, setFilter, preFilteredRows, id, metadata}
+                                     column: {filterValue, setFilter, preFilteredRows, id, metadata}, dataAuthors, dataSources
                                  }) {
     // Calculate the options for filtering
     // using the preFilteredRows
-
-    console.log('inner metadata', metadata)
-
-    const options = React.useMemo(() => {
-        const validMetadata = Array.isArray(metadata) ? metadata : [];
-        const options = new Set();
-        preFilteredRows.forEach(row => {
-            if (row.values[id].length > 0) {
-                options.add(row.values[id]);
-            }
-        })
-        return [...options.values()].sort(function (a: any, b: any) {
-            return (a < b) ? -1 : (a > b) ? 1 : 0;
-        });
-    }, [metadata, preFilteredRows]);
-
-    // Create Options
-    // const _options = React.useMemo(() => {
-    //   return options.map((o:string) => { return {label: o, value:o};});
-    // }, [options]);
-
-    // const _filterOptions = React.useMemo(() => {
-    //   return createFilterOptions({
-    //     options: _options,
-    //     indexStrategy: indexStrategy
-    //   });
-    // }, [_options]);
-
-    // const [multiselectSelectedOptions, setMultiselectSelectedOptions]:any = React.useState(filterValue);
+    let options = [];
+    // console.log('inner metadata', metadata)
+    if (id === 'Author' && dataAuthors) {
+        // Use the passed set of authors
+        options = [...new Set(dataAuthors)].sort();
+    } else if (id === 'Source' && dataSources) {
+        // Use the passed set of sources
+        options = [...new Set(dataSources)].sort();
+    } else {
+        // Default behavior for other columns or if dataAuthors/dataSources are not available
+        options = React.useMemo(() => {
+            const options = new Set();
+            preFilteredRows.forEach(row => {
+                if ("values" in row && id in row["values"] && row["values"][id] != null) {
+                    options.add(row.values[id]);
+                }
+            });
+            return [...options.values()].sort(function (a: any, b: any) {
+                return (a < b) ? -1 : (a > b) ? 1 : 0;
+            });
+        }, [preFilteredRows]);
+    }
+    const _options = React.useMemo(() => {
+        return options.map((o: string) => ({label: o, value: o}));
+    }, [options]);
     const [multiselectTokenSelectedOptions, setMultiSelectTokenSelectedOptions] = React.useState<any[]>([]);
     const onChange = (selectedOptions): void => {
         // TODO Call /getPaper
@@ -487,9 +492,6 @@ function MultiSelectColumnFilter({
             setMultiSelectTokenSelectedOptions(_selOptions);
         }
     }, [filterValue]);
-    const _options = React.useMemo(() => {
-        return options.map((o: string) => ({label: o, value: o}));
-    }, [options]);
 
     // Render a multi-select box
     return (
@@ -528,17 +530,18 @@ function DefaultColumnFilter({
         />)
 }
 
-function filterMapping(filter) {
-    if (filter == "multiselect") {
-        return {Filter: MultiSelectColumnFilter, filter: 'includesValue'}
-    } else if (filter == "default") {
-        return {Filter: DefaultColumnFilter, filter: 'fuzzyText'}
-    } else if (filter == "range") {
-        return {Filter: NumberRangeColumnFilter, filter: 'between'}
-    } else if (filter == "multiselect-tokens") {
-        return {Filter: MultiSelectTokensColumnFilter, filter: 'includesValue'}
+function filterMapping(filter, dataAuthors, dataSources) {
+    if (filter === "multiselect") {
+        return { Filter: (props) => <MultiSelectColumnFilter {...props} dataAuthors={dataAuthors} dataSources={dataSources}/>, filter: 'includesValue' };
+    } else if (filter === "default") {
+        return { Filter: DefaultColumnFilter, filter: 'fuzzyText' };
+    } else if (filter === "range") {
+        return { Filter: NumberRangeColumnFilter, filter: 'between' };
+    } else if (filter === "multiselect-tokens") {
+        return { Filter: MultiSelectTokensColumnFilter, filter: 'includesValue' };
     }
 }
+
 
 // Be sure to pass our updateMyData and the skipReset option
 function Table({
@@ -581,6 +584,8 @@ function Table({
                    openGScholar,
                    loadMoreData,
                    hasMoreData,
+                   dataAuthors,
+                   dataSources
                }) {
 
     const [isLoading, setIsLoading] = useState(false);
@@ -1415,6 +1420,8 @@ export interface SmartTableProps {
     hasEmbeddings: Function;
     openGScholar?: Function;
     isInSelectedNodeIDs?: Function;
+    dataAuthors?: any[];
+    dataSources?: any[];
 }
 
 export const SmartTable: React.FC<{
@@ -1426,14 +1433,19 @@ export const SmartTable: React.FC<{
         columnFilterTypes, updateVisibleColumns, columnsVisible, updateColumnFilterValues,
         columnFilterValues, setFilteredPapers, updateColumnSortByValues, columnSortByValues,
         globalFilterValue, updateGlobalFilterValue, scrollToPaperID, addToSelectNodeIDs,
-        checkoutPapers, summarizePapers, literatureReviewPapers, embeddingType, hasEmbeddings, openGScholar, isInSelectedNodeIDs, loadMoreData,hasMoreData
+        checkoutPapers, summarizePapers, literatureReviewPapers, embeddingType, hasEmbeddings, openGScholar, isInSelectedNodeIDs, loadMoreData, hasMoreData, dataAuthors, dataSources
     } = props;
+    console.log("Authors data:", dataAuthors);
+    console.log("Sources data:", dataSources);
+    console.log("columnFilterValues:", columnFilterValues);
 
     const data = tableData[tableType];
     const columns = React.useMemo(() => columnIds.map((c) => {
         const columnHeader = {Header: c, accessor: c};
         const columnWidth = columnWidths[c];
-        const columnFilter = filterMapping(columnFilterTypes[c]);
+        // console.log('columnFilterTypes passed dataSources',dataSources);
+        const columnFilter = filterMapping(columnFilterTypes[c], dataAuthors,dataSources);
+
         const columnMeta = tableData?.metaData ? tableData.metaData[c] : '';
         // let columnMeta = {metadata: ''}
         // if (tableData['metaData'] === undefined) {
@@ -1521,6 +1533,8 @@ export const SmartTable: React.FC<{
                 openGScholar={openGScholar}
                 loadMoreData={loadMoreData}
                 hasMoreData={hasMoreData}
+                dataAuthors={dataAuthors}  // Pass dataAuthors to Table
+                dataSources={dataSources}  // Pass dataSources to Table
             />
         </Styles>
     )
