@@ -347,7 +347,7 @@ function NumberRangeColumnFilter({
 }
 
 function MultiSelectTokensColumnFilter({
-                                           column: {setFilter, preFilteredRows, id, filterValue},dataAuthors, dataSources
+                                           column: {setFilter, preFilteredRows, id, filterValue},dataAuthors, dataSources,dataKeywords
                                        }) {
     // Calculate the options for filtering
     // using the preFilteredRows
@@ -358,7 +358,10 @@ function MultiSelectTokensColumnFilter({
     } else if (id === 'Source' && dataSources) {
         // Use the passed set of sources
         options = [...new Set(dataSources)].sort();
-    } else {
+    } else if (id === 'Keyword'&&dataKeywords){
+        options = [...new Set(dataKeywords)].sort();
+    }
+    else {
         options = React.useMemo(() => {
             const options = new Set();
             preFilteredRows.forEach(row => {
@@ -443,7 +446,7 @@ function MultiSelectTokensColumnFilter({
 }
 
 function MultiSelectColumnFilter({
-                                     column: {filterValue, setFilter, preFilteredRows, id, metadata}, dataAuthors, dataSources
+                                     column: {filterValue, setFilter, preFilteredRows, id, metadata}, dataAuthors, dataSources,dataKeywords
                                  }) {
     // Calculate the options for filtering
     // using the preFilteredRows
@@ -455,7 +458,10 @@ function MultiSelectColumnFilter({
     } else if (id === 'Source' && dataSources) {
         // Use the passed set of sources
         options = [...new Set(dataSources)].sort();
-    } else {
+    } else if (id==='Keyword'&& dataKeywords){
+        options = [...new Set(dataKeywords)].sort();
+    }
+    else {
         // Default behavior for other columns or if dataAuthors/dataSources are not available
         options = React.useMemo(() => {
             const options = new Set();
@@ -530,9 +536,9 @@ function DefaultColumnFilter({
         />)
 }
 
-function filterMapping(filter, dataAuthors, dataSources) {
+function filterMapping(filter, dataAuthors, dataSources,dataKeywords) {
     if (filter === "multiselect") {
-        return { Filter: (props) => <MultiSelectColumnFilter {...props} dataAuthors={dataAuthors} dataSources={dataSources}/>, filter: 'includesValue' };
+        return { Filter: (props) => <MultiSelectColumnFilter {...props} dataAuthors={dataAuthors} dataSources={dataSources} dataKeywords={dataKeywords}/>, filter: 'includesValue' };
     } else if (filter === "default") {
         return { Filter: DefaultColumnFilter, filter: 'fuzzyText' };
     } else if (filter === "range") {
@@ -585,7 +591,8 @@ function Table({
                    loadMoreData,
                    hasMoreData,
                    dataAuthors,
-                   dataSources
+                   dataSources,
+                   dataKeywords
                }) {
 
     const [isLoading, setIsLoading] = useState(false);
@@ -1422,6 +1429,7 @@ export interface SmartTableProps {
     isInSelectedNodeIDs?: Function;
     dataAuthors?: any[];
     dataSources?: any[];
+    dataKeywords?: any[];
 }
 
 export const SmartTable: React.FC<{
@@ -1433,10 +1441,11 @@ export const SmartTable: React.FC<{
         columnFilterTypes, updateVisibleColumns, columnsVisible, updateColumnFilterValues,
         columnFilterValues, setFilteredPapers, updateColumnSortByValues, columnSortByValues,
         globalFilterValue, updateGlobalFilterValue, scrollToPaperID, addToSelectNodeIDs,
-        checkoutPapers, summarizePapers, literatureReviewPapers, embeddingType, hasEmbeddings, openGScholar, isInSelectedNodeIDs, loadMoreData, hasMoreData, dataAuthors, dataSources
+        checkoutPapers, summarizePapers, literatureReviewPapers, embeddingType, hasEmbeddings, openGScholar, isInSelectedNodeIDs, loadMoreData, hasMoreData, dataAuthors, dataSources,dataKeywords
     } = props;
     console.log("Authors data:", dataAuthors);
     console.log("Sources data:", dataSources);
+    console.log("Keywords data:", dataKeywords);
     console.log("columnFilterValues:", columnFilterValues);
 
     const data = tableData[tableType];
@@ -1444,7 +1453,7 @@ export const SmartTable: React.FC<{
         const columnHeader = {Header: c, accessor: c};
         const columnWidth = columnWidths[c];
         // console.log('columnFilterTypes passed dataSources',dataSources);
-        const columnFilter = filterMapping(columnFilterTypes[c], dataAuthors,dataSources);
+        const columnFilter = filterMapping(columnFilterTypes[c], dataAuthors,dataSources,dataKeywords);
 
         const columnMeta = tableData?.metaData ? tableData.metaData[c] : '';
         // let columnMeta = {metadata: ''}
@@ -1535,6 +1544,7 @@ export const SmartTable: React.FC<{
                 hasMoreData={hasMoreData}
                 dataAuthors={dataAuthors}  // Pass dataAuthors to Table
                 dataSources={dataSources}  // Pass dataSources to Table
+                dataKeywords={dataKeywords}
             />
         </Styles>
     )

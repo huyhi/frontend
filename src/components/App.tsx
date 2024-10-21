@@ -127,9 +127,9 @@ interface AppState {
     embeddingType: IDropdownOption;
     paperNoEmbeddings: Object;
     isPanelOpen: boolean;
-    dataKeywords: Array<any>;
     dataAuthors: Array<any>;
     dataSources: Array<any>;
+    dataKeywords: Array<any>;
     dataYears: Array<any>;
     dataTitles: Array<any>;
     dataAll: Array<any>;
@@ -526,6 +526,9 @@ class App extends React.Component<{}, AppState> {
         }
         if (prevState.dataSources !== this.state.dataSources) {
             console.log("dataSources updated:", this.state.dataSources);
+        }
+        if (prevState.dataKeywords !== this.state.dataKeywords) {
+            console.log("dataKeywords updated:", this.state.dataKeywords);
         }
     }
 
@@ -1091,7 +1094,8 @@ class App extends React.Component<{}, AppState> {
             openGScholar: openGScholar,
             isInSelectedNodeIDs: isInSelectedNodeIDs,
             dataAuthors: this.state.dataAuthors,
-            dataSources:this.state.dataSources
+            dataSources:this.state.dataSources,
+            dataKeywords: this.state.dataKeywords,
         }
 
         const setScrollToPaperID = (_ID) => {
