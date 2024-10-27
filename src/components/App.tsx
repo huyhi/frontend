@@ -346,12 +346,42 @@ class App extends React.Component<{}, AppState> {
         }
     }
     loadMoreData = async () => {
-        const { offset, hasMoreData } = this.state;
+        const {
+            offset,
+            hasMoreData,
+            globalFilterValue,
+            columnFilterValues,
+        } = this.state;
         const limit = 1000; // Specify limit of records to fetch
 
         if (hasMoreData) {
-            const response = await fetch(`${baseUrl}getPapers?offset=${offset}&limit=${limit}`);
+            console.log(columnFilterValues["all"])
+            const author = columnFilterValues["all"].find(f => f.id === 'Author')?.value;
+            const source = columnFilterValues["all"].find(f => f.id === 'Source')?.value;
+            const keyword = columnFilterValues["all"].find(f => f.id === 'Keyword')?.value;
+            const minYear = columnFilterValues["all"].find(f => f.id === 'Year')?.min;
+            const maxYear = columnFilterValues["all"].find(f => f.id === 'Year')?.max;
+            const searchText = globalFilterValue["all"];
+
+            const queryPayload = {
+                offset,
+                limit,
+                title: searchText && searchText.length > 0 ? searchText : undefined,
+                author: author?.length ? author : undefined,
+                source: source?.length ? source : undefined,
+                keyword: keyword?.length ? keyword : undefined,
+                min_year: minYear || undefined,
+                max_year: maxYear || undefined,
+            };
+            const response = await fetch(`${baseUrl}getPapers`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(queryPayload),
+            });
             const newData = await response.json();
+            console.log("Fetched data:", newData);
 
             this.setState((prevState) => ({
                 dataAll: [...prevState.dataAll, ...newData],
@@ -1066,10 +1096,24 @@ class App extends React.Component<{}, AppState> {
             },
             columnFilterValues: this.state.columnFilterValues["all"],
             updateColumnFilterValues: (filter) => {
+                this.setState({
+                    dataAll: [],
+                    offset: 0,
+                    hasMoreData: true,
+                }, () => {
+                    this.loadMoreData();
+                });
                 this.updateStateProp("columnFilterValues", filter, "all");
             },
             globalFilterValue: this.state.globalFilterValue["all"],
             updateGlobalFilterValue: (filter) => {
+                this.setState({
+                    dataAll: [],
+                    offset: 0,
+                    hasMoreData: true,
+                }, () => {
+                    this.loadMoreData();
+                });
                 this.updateStateProp("globalFilterValue", filter, "all");
             },
             columnFilterTypes: this.state.columnFilterTypes,
