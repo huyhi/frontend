@@ -286,7 +286,7 @@ function NumberRangeColumnFilter({
          column: { filterValue, setFilter, id },
          staticMinYear = 1975, // Default to 1975 if not provided
          staticMaxYear = 2024 // Default to 2024 if not provided
-     }: { column: any; staticMinYear?: number; staticMaxYear?: number }) {
+     }){
     // const range = React.useMemo(() => {
     //     let min = preFilteredRows.length ? preFilteredRows[0].values[id] : 0
     //     let max = preFilteredRows.length ? preFilteredRows[0].values[id] : 0
@@ -394,13 +394,15 @@ function MultiSelectTokensColumnFilter({
                 }
             }
         });
-        console.log("Selected Options:", _selOpts); // Log selected options
-        console.log("Filtered Values before Set:", filteredValues); // Log values before uniqueness
+        const selectedValues = _selOpts.map(opt => opt.value);
+        console.log("Selected OptionsInToken:", _selOpts); // Log selected options
+        console.log("Filtered Values before SetInToken:", filteredValues); // Log values before uniqueness
         filteredValues = [...new Set(filteredValues)];
-        console.log("Filtered Values after Set:", filteredValues); // Log unique filtered values
+        console.log("Filtered Values after SetInToken:", filteredValues); // Log unique filtered values
 
         setMultiSelectTokenSelectedOptions(_selOpts);
-        setFilter(filteredValues.length > 0 ? filteredValues : undefined);
+        setFilter(selectedValues.length > 0 ? selectedValues : undefined);
+        // setFilter(filteredValues.length > 0 ? filteredValues : undefined);
     }
 
     React.useEffect(() => {
@@ -552,13 +554,22 @@ function DefaultColumnFilter({
         />)
 }
 
-function filterMapping(filter, dataAuthors, dataSources,dataKeywords) {
+function filterMapping(filter, dataAuthors, dataSources,dataKeywords,staticMinYear = 1975, staticMaxYear = 2024) {
     if (filter === "multiselect") {
         return { Filter: (props) => <MultiSelectColumnFilter {...props} dataAuthors={dataAuthors} dataSources={dataSources} dataKeywords={dataKeywords}/>, filter: 'includesValue' };
     } else if (filter === "default") {
         return { Filter: DefaultColumnFilter, filter: 'fuzzyText' };
     } else if (filter === "range") {
-        return { Filter: NumberRangeColumnFilter, filter: 'between' };
+        return {
+            Filter: (props) => (
+                <NumberRangeColumnFilter
+                    {...props}
+                    staticMinYear={staticMinYear}
+                    staticMaxYear={staticMaxYear}
+                />
+            ),
+            filter: 'between',
+        };
     } else if (filter === "multiselect-tokens") {
         return { Filter: (props) => <MultiSelectTokensColumnFilter {...props} dataAuthors={dataAuthors} dataSources={dataSources} dataKeywords={dataKeywords}/>, filter: 'includesValue' };
 
@@ -690,6 +701,7 @@ function Table({
             openGScholar,
             // We also need to pass this so the page doesn't change
             // when we edit the data.
+            manualFilters: tableType === "all",
             autoResetHiddenColumns: !skipReset,
             autoResetPage: !skipReset,
             autoResetSelectedRows: !skipReset,
@@ -698,6 +710,7 @@ function Table({
             autoResetFilters: !skipReset,
             autoResetRowState: !skipReset,
             disableMultiSort: !skipReset,
+
         },
         useFilters,
         useGlobalFilter,
@@ -980,7 +993,10 @@ function Table({
 
     React.useEffect(() => {
         // `filtered rows` changed due to local/global filters.
-        setFilteredPapers(rows.map((r) => r.original));
+        if (tableType !== "all") {
+            // Only update filtered papers for non-"all" table types
+            setFilteredPapers(rows.map(r => r.original));
+        }
     }, [rows]);
 
     // Reference to the VariableSizeList element
@@ -1030,6 +1046,7 @@ function Table({
         ({index, style}) => {
             const row = rows[index]
             prepareRow(row);
+            console.log('Rendering Row:', row);
 
             return (
                 <div {...row.getRowProps({style})} className="tr">
@@ -1431,7 +1448,7 @@ export interface SmartTableProps {
         year: any[],
         metaData?: Record<string, any>  // Add this to define metaData
     };
-    dataFiltered: {};
+    dataFiltered: any[];
     tableType: string;
     addToSimilarInputPapers?: Function;
     addToSavedPapers?: Function;
@@ -1456,24 +1473,27 @@ export const SmartTable: React.FC<{
     props: SmartTableProps
 }> = observer(({props}) => {
     let {
-        tableData, dataFiltered, tableType, tableControls, columnIds, isInSimilarInputPapers,
+        tableData, dataFiltered= [], tableType, tableControls, columnIds, isInSimilarInputPapers,
         isInSavedPapers, addToSimilarInputPapers, addToSavedPapers, deleteRow, columnWidths,
         columnFilterTypes, updateVisibleColumns, columnsVisible, updateColumnFilterValues,
         columnFilterValues, setFilteredPapers, updateColumnSortByValues, columnSortByValues,
         globalFilterValue, updateGlobalFilterValue, scrollToPaperID, addToSelectNodeIDs,
-        checkoutPapers, summarizePapers, literatureReviewPapers, embeddingType, hasEmbeddings, openGScholar, isInSelectedNodeIDs, loadMoreData, hasMoreData, dataAuthors, dataSources,dataKeywords
+        checkoutPapers, summarizePapers, literatureReviewPapers, embeddingType, hasEmbeddings, openGScholar, isInSelectedNodeIDs, loadMoreData, hasMoreData, dataAuthors, dataSources,dataKeywords, staticMinYear,staticMaxYear
     } = props;
+    console.log('staticMinYear',staticMinYear)
     console.log("Authors data:", dataAuthors);
     console.log("Sources data:", dataSources);
     console.log("Keywords data:", dataKeywords);
     console.log("columnFilterValues:", columnFilterValues);
 
     const data = tableData[tableType];
+    console.log("tableType:",tableType);
+    console.log("data:",tableData[tableType]);
     const columns = React.useMemo(() => columnIds.map((c) => {
         const columnHeader = {Header: c, accessor: c};
         const columnWidth = columnWidths[c];
         // console.log('columnFilterTypes passed dataSources',dataSources);
-        const columnFilter = filterMapping(columnFilterTypes[c], dataAuthors,dataSources,dataKeywords);
+        const columnFilter = filterMapping(columnFilterTypes[c], dataAuthors,dataSources,dataKeywords,staticMinYear, staticMaxYear);
 
         const columnMeta = tableData?.metaData ? tableData.metaData[c] : '';
         // let columnMeta = {metadata: ''}
@@ -1484,7 +1504,6 @@ export const SmartTable: React.FC<{
         // }
 
         console.log('outer metadata', {columnMeta})
-        // console.log({...columnHeader, ...columnWidth, ...columnFilter, ...columnMeta})
 
         return {...columnHeader, ...columnWidth, ...columnFilter, metadata: columnMeta};
     }), [columnIds, columnWidths, columnFilterTypes, tableData.metaData]);
@@ -1519,13 +1538,11 @@ export const SmartTable: React.FC<{
     Now, I'm giving you information on some relevant papers. \
     Could you please help me write a comprehensive literature review about these papers? \
     The requirement is to compare these papers as much as possible, summarizing the similarities, differences, and connections between them.`);
-    const { staticMinYear, staticMaxYear } = props;
 
+    // @ts-ignore
     return (
         <Styles>
             <Table
-                staticMinYear={staticMinYear}
-                staticMaxYear={staticMaxYear}
                 tableType={tableType}
                 embeddingType={embeddingType}
                 hasEmbeddings={hasEmbeddings}
@@ -1567,8 +1584,7 @@ export const SmartTable: React.FC<{
                 hasMoreData={hasMoreData}
                 dataAuthors={dataAuthors}  // Pass dataAuthors to Table
                 dataSources={dataSources}  // Pass dataSources to Table
-                dataKeywords={dataKeywords}
-            />
+                dataKeywords={dataKeywords}></Table>
         </Styles>
     )
 });

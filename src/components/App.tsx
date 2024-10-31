@@ -535,40 +535,49 @@ class App extends React.Component<{}, AppState> {
         });
     }
 
-    getMetaData = () => {
+    getMetaData = async () => {
         if (this.state.metadataInitialized) return;
-        this.setState({spinner: true});
-        let parent = this;
-
-        const requestOptions = {
-            method: 'GET',
-            headers: {'Content-Type': 'application/json'}
-        };
-        fetch(baseUrl + 'getMetaData', requestOptions)
-            .then(function (response) {
-                return response.text();
-            }).then(function (data) {
-            const _metaData = JSON.parse(data);
-            console.log("_metaData.years",_metaData.years);
-            const minYear = _metaData.years?.min || 1975;
-            const maxYear = _metaData.years?.max || 2024;
-            parent.setState({
-                "metaData": _metaData,
-                "dataAuthors": _metaData.authors,  // Store authors metadata
-                "dataSources": _metaData.sources,  // Store sources metadata
-                "dataKeywords": _metaData.keywords,
-                "dataTitles": _metaData.titles,
-                "spinner": false,
-                metadataInitialized: true,
+        this.setState({ spinner: true });
+        try {
+            const response = await fetch(baseUrl + 'getMetaData', {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
             });
-        });
-    }
+            const data = await response.json();
+            console.log("_metaData.years", data.years);
+
+            const minYear = data.years.length > 0 ? Math.min(...data.years) : 1975;
+            const maxYear = data.years.length > 0 ? Math.max(...data.years) : 2024;
+
+            this.setState({
+                metaData: data,
+                dataAuthors: data.authors,
+                dataSources: data.sources,
+                dataKeywords: data.keywords,
+                dataTitles: data.titles,
+                minYear,
+                maxYear,
+                metadataInitialized: true,
+                spinner: false,
+            });
+        } catch (error) {
+            console.error("Error fetching metadata:", error);
+            this.setState({ spinner: false });
+        }
+    };
 
     componentDidMount() {
-        this.getData()
-        this.getUmapPoints()
-        this.getMetaData()
+        this.loadInitialData();
     }
+    loadInitialData = async () => {
+        try {
+            await this.getMetaData(); // Load metadata first
+            this.getData(); // Load the main data
+            this.getUmapPoints(); // Load UMAP points data
+        } catch (error) {
+            console.error("Error loading initial data:", error);
+        }
+    };
     componentDidUpdate(prevProps, prevState) {
         if (prevState.dataAuthors !== this.state.dataAuthors) {
             console.log("dataAuthors updated:", this.state.dataAuthors);
@@ -597,8 +606,9 @@ class App extends React.Component<{}, AppState> {
         }
 
         const hasEmbeddings = (ID) => {
-            return this.state.paperNoEmbeddings[this.state.embeddingType.key as string].indexOf(ID) === -1;
-        }
+            const embeddingData = this.state.paperNoEmbeddings[this.state.embeddingType.key as string];
+            return embeddingData ? embeddingData.indexOf(ID) === -1 : false;
+        };
 
         const isInSimilarInputPapers = (row) => {
             if (Array.isArray(row)) {
@@ -1163,6 +1173,7 @@ class App extends React.Component<{}, AppState> {
             staticMaxYear: this.state.maxYear
         }
 
+
         const setScrollToPaperID = (_ID) => {
             this.setState({
                 scrollToPaperID: _ID
@@ -1582,7 +1593,24 @@ class App extends React.Component<{}, AppState> {
                 </div>
             );
         }
-
+        const { metadataInitialized, spinner } = this.state;
+        if (!metadataInitialized) {
+            return (
+                <LoadingOverlay
+                    active={spinner}
+                    spinner
+                    text={'Loading Metadata...'}
+                    styles={{
+                        wrapper: {},
+                        overlay: (base) => ({ ...base, background: 'rgba(0, 0, 0, 0.5)' }),
+                        content: (base) => ({ ...base, color: 'rgba(255, 255, 255, 1)' })
+                    }}
+                >
+                    {/* You can customize this as needed */}
+                    {/*<div>Loading, please wait...</div>*/}
+                </LoadingOverlay>
+            );
+        }
         return (
             <>
                 <LoadingOverlay
