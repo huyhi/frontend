@@ -283,23 +283,26 @@ function GlobalFilter({
 }
 
 function NumberRangeColumnFilter({
-                                     column: {filterValue, preFilteredRows, setFilter, id},
-                                 }) {
-    const range = React.useMemo(() => {
-        let min = preFilteredRows.length ? preFilteredRows[0].values[id] : 0
-        let max = preFilteredRows.length ? preFilteredRows[0].values[id] : 0
-
-        preFilteredRows.forEach(row => {
-            min = Math.min(row.values[id], min)
-            max = Math.max(row.values[id], max)
-        })
-        return [min, max];
-    }, [preFilteredRows]);
+         column: { filterValue, setFilter, id },
+         staticMinYear = 1975, // Default to 1975 if not provided
+         staticMaxYear = 2024 // Default to 2024 if not provided
+     }: { column: any; staticMinYear?: number; staticMaxYear?: number }) {
+    // const range = React.useMemo(() => {
+    //     let min = preFilteredRows.length ? preFilteredRows[0].values[id] : 0
+    //     let max = preFilteredRows.length ? preFilteredRows[0].values[id] : 0
+    //
+    //     preFilteredRows.forEach(row => {
+    //         min = Math.min(row.values[id], min)
+    //         max = Math.max(row.values[id], max)
+    //     })
+    //     return [min, max];
+    // }, [preFilteredRows]);
+    const range = [staticMinYear, staticMaxYear];
 
     const [value, setValue] = React.useState<number[]>(range);
-    React.useEffect(() => {
-        setValue(range);
-    }, [range]);
+    // React.useEffect(() => {
+    //     setValue(range);
+    // }, [range]);
 
     React.useEffect(() => {
         if (filterValue && filterValue.length > 0) {
@@ -310,11 +313,12 @@ function NumberRangeColumnFilter({
     const [step, marks] = React.useMemo(() => {
         const step = range[1] > 2 ? 1 : 0.001;
         return [step, [
-            {value: range[0], label: range[0].toPrecision(4)},
-            {value: value[0], label: value[0].toPrecision(4)},
-            {value: value[1], label: value[1].toPrecision(4)},
-            {value: range[1], label: range[1].toPrecision(4)}
-        ].filter((v, i, a) => a.findIndex(t => (t.label === v.label)) === i)];
+            { value: range[0], label: range[0].toString() },
+            { value: value[0], label: value[0].toString() },
+            { value: value[1], label: value[1].toString() },
+            { value: range[1], label: range[1].toString() },
+        ]
+    ];
     }, [value, range]);
 
     function valueText(value: number, index: number) {
@@ -390,6 +394,11 @@ function MultiSelectTokensColumnFilter({
                 }
             }
         });
+        console.log("Selected Options:", _selOpts); // Log selected options
+        console.log("Filtered Values before Set:", filteredValues); // Log values before uniqueness
+        filteredValues = [...new Set(filteredValues)];
+        console.log("Filtered Values after Set:", filteredValues); // Log unique filtered values
+
         setMultiSelectTokenSelectedOptions(_selOpts);
         setFilter(filteredValues.length > 0 ? filteredValues : undefined);
     }
@@ -409,6 +418,7 @@ function MultiSelectTokensColumnFilter({
                         }
                     }
                 });
+                console.log('filteredValues:',filteredValues);
                 setFilter(filteredValues.length > 0 ? filteredValues : undefined);
             }
         }
@@ -487,6 +497,12 @@ function MultiSelectColumnFilter({
                 return rowValues.some(r => selectedOptions.some(option => option.value === r));
             })
             .map(row => row.values[id]);
+        console.log("Selected Options_ColumnFilter:", selectedOptions); // Log selected options
+        console.log("Filtered Values before Set:", filteredValues); // Log values before uniqueness
+
+        const uniqueFilteredValues = [...new Set(filteredValues)];
+        console.log("Filtered Values after Set:", uniqueFilteredValues); // Log unique filtered values
+
 
         setMultiSelectTokenSelectedOptions(selectedOptions);
         setFilter(selectedOptions.map(option => option.value));
@@ -544,6 +560,8 @@ function filterMapping(filter, dataAuthors, dataSources,dataKeywords) {
     } else if (filter === "range") {
         return { Filter: NumberRangeColumnFilter, filter: 'between' };
     } else if (filter === "multiselect-tokens") {
+        return { Filter: (props) => <MultiSelectTokensColumnFilter {...props} dataAuthors={dataAuthors} dataSources={dataSources} dataKeywords={dataKeywords}/>, filter: 'includesValue' };
+
         return { Filter: MultiSelectTokensColumnFilter, filter: 'includesValue' };
     }
 }
@@ -1382,6 +1400,8 @@ function Table({
 
 export interface SmartTableProps {
     // State
+    staticMinYear?: number;  // Optional properties for min and max years
+    staticMaxYear?: number;
     loadMoreData?: () => Promise<void>;
     hasMoreData?: boolean;
     globalFilterValue: Array<any>;
@@ -1499,10 +1519,13 @@ export const SmartTable: React.FC<{
     Now, I'm giving you information on some relevant papers. \
     Could you please help me write a comprehensive literature review about these papers? \
     The requirement is to compare these papers as much as possible, summarizing the similarities, differences, and connections between them.`);
+    const { staticMinYear, staticMaxYear } = props;
 
     return (
         <Styles>
             <Table
+                staticMinYear={staticMinYear}
+                staticMaxYear={staticMaxYear}
                 tableType={tableType}
                 embeddingType={embeddingType}
                 hasEmbeddings={hasEmbeddings}

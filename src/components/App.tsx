@@ -114,6 +114,9 @@ interface TableTypes {
 
 interface AppState {
     // Will change
+    minYear: number | null;
+    maxYear: number | null;
+    metadataInitialized: boolean;
     eventOrigin: string;
     spinner: boolean;
     globalFilterValue: TableTypes;
@@ -201,6 +204,9 @@ class App extends React.Component<{}, AppState> {
     constructor(props: any) {
         super(props);
         this.state = {
+            minYear: null,
+            maxYear: null,
+            metadataInitialized: false,
             spinner: true,
             isCiteUsCalloutVisible: false,
             columnFilterTypes: {
@@ -356,11 +362,18 @@ class App extends React.Component<{}, AppState> {
 
         if (hasMoreData) {
             console.log(columnFilterValues["all"])
-            const author = columnFilterValues["all"].find(f => f.id === 'Author')?.value;
+            const author = columnFilterValues["all"]
+                .find(f => f.id === 'Authors')?.value?.flat() || []; // Flatten any nested array
+            console.log('Processed authors:', author);
             const source = columnFilterValues["all"].find(f => f.id === 'Source')?.value;
-            const keyword = columnFilterValues["all"].find(f => f.id === 'Keyword')?.value;
-            const minYear = columnFilterValues["all"].find(f => f.id === 'Year')?.min;
-            const maxYear = columnFilterValues["all"].find(f => f.id === 'Year')?.max;
+            const keyword = columnFilterValues["all"]
+                .find(f => f.id === 'Keywords')?.value?.flat() || [];
+            console.log('Processed keywords:', keyword);
+            const yearFilter = columnFilterValues["all"].find(f => f.id === 'Year');
+            console.log('yearFilter',yearFilter)
+            const minYear = yearFilter ? yearFilter.value[0] : undefined;
+            console.log('minYear',minYear)
+            const maxYear = yearFilter ? yearFilter.value[1] : undefined;
             const searchText = globalFilterValue["all"];
 
             const queryPayload = {
@@ -373,6 +386,7 @@ class App extends React.Component<{}, AppState> {
                 min_year: minYear || undefined,
                 max_year: maxYear || undefined,
             };
+            console.log('Query Payload:', queryPayload);
             const response = await fetch(`${baseUrl}getPapers`, {
                 method: 'POST',
                 headers: {
@@ -522,6 +536,7 @@ class App extends React.Component<{}, AppState> {
     }
 
     getMetaData = () => {
+        if (this.state.metadataInitialized) return;
         this.setState({spinner: true});
         let parent = this;
 
@@ -534,13 +549,17 @@ class App extends React.Component<{}, AppState> {
                 return response.text();
             }).then(function (data) {
             const _metaData = JSON.parse(data);
+            console.log("_metaData.years",_metaData.years);
+            const minYear = _metaData.years?.min || 1975;
+            const maxYear = _metaData.years?.max || 2024;
             parent.setState({
                 "metaData": _metaData,
                 "dataAuthors": _metaData.authors,  // Store authors metadata
                 "dataSources": _metaData.sources,  // Store sources metadata
                 "dataKeywords": _metaData.keywords,
                 "dataTitles": _metaData.titles,
-                "spinner": false
+                "spinner": false,
+                metadataInitialized: true,
             });
         });
     }
@@ -1140,6 +1159,8 @@ class App extends React.Component<{}, AppState> {
             dataAuthors: this.state.dataAuthors,
             dataSources:this.state.dataSources,
             dataKeywords: this.state.dataKeywords,
+            staticMinYear: this.state.minYear,   // Pass minYear to SmartTable
+            staticMaxYear: this.state.maxYear
         }
 
         const setScrollToPaperID = (_ID) => {
