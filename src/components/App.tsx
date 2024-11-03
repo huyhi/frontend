@@ -361,20 +361,39 @@ class App extends React.Component<{}, AppState> {
         const limit = 1000; // Specify limit of records to fetch
 
         if (hasMoreData) {
-            console.log(columnFilterValues["all"])
+            console.log('columnFilterValues[all]',columnFilterValues["all"]);
             const author = columnFilterValues["all"]
                 .find(f => f.id === 'Authors')?.value?.flat() || []; // Flatten any nested array
-            console.log('Processed authors:', author);
+            // console.log('Processed authors:', author);
             const source = columnFilterValues["all"].find(f => f.id === 'Source')?.value;
             const keyword = columnFilterValues["all"]
                 .find(f => f.id === 'Keywords')?.value?.flat() || [];
-            console.log('Processed keywords:', keyword);
+            // console.log('Processed keywords:', keyword);
             const yearFilter = columnFilterValues["all"].find(f => f.id === 'Year');
-            console.log('yearFilter',yearFilter)
+            // console.log('yearFilter',yearFilter)
             const minYear = yearFilter ? yearFilter.value[0] : undefined;
-            console.log('minYear',minYear)
+            // console.log('minYear',minYear)
             const maxYear = yearFilter ? yearFilter.value[1] : undefined;
-            const searchText = globalFilterValue["all"];
+            const searchText = columnFilterValues["all"]
+                .filter(f => f.id === 'Title') // Filter for entries with id 'Title'
+                .map(f => f.value) // Extract the value for each entry
+                .join(' ');
+            // Extract CitationCounts (assuming it is a range with [min, max])
+            const abstract = columnFilterValues["all"]
+                .find(f => f.id === 'Abstract')?.value || undefined;
+            const citationCountsFilter = columnFilterValues["all"]
+                .find(f => f.id === 'CitationCounts');
+            const minCitationCount = citationCountsFilter ? citationCountsFilter.value[0] : undefined;
+            const maxCitationCount = citationCountsFilter ? citationCountsFilter.value[1] : undefined;
+
+            // Extract ID
+            const idValue = columnFilterValues["all"].find(f => f.id === 'ID')?.value;
+            let idList;
+            if (idValue) {
+                idList = [idValue]; // Wrap in an array if it's not already
+            } else {
+                idList = undefined; // Keep it undefined if there is no value
+            }
 
             const queryPayload = {
                 offset,
@@ -385,6 +404,10 @@ class App extends React.Component<{}, AppState> {
                 keyword: keyword?.length ? keyword : undefined,
                 min_year: minYear || undefined,
                 max_year: maxYear || undefined,
+                abstract: abstract || undefined,
+                min_citation_count: minCitationCount || undefined,
+                max_citation_count: maxCitationCount || undefined,
+                id_list: idList || undefined,
             };
             console.log('Query Payload:', queryPayload);
             const response = await fetch(`${baseUrl}getPapers`, {
@@ -395,10 +418,14 @@ class App extends React.Component<{}, AppState> {
                 body: JSON.stringify(queryPayload),
             });
             const newData = await response.json();
-            console.log("Fetched data:", newData);
+            // console.log("Fetched data:", newData);
+            const combinedData = [...this.state.dataAll, ...newData];
+            const uniqueData = Array.from(new Set(combinedData.map(item => item.ID))).map(
+                id => combinedData.find(item => item.ID === id)
+            );
 
             this.setState((prevState) => ({
-                dataAll: [...prevState.dataAll, ...newData],
+                dataAll: uniqueData,
                 offset: prevState.offset + limit,
                 hasMoreData: newData.length === limit, // Check if more data is available
             }));

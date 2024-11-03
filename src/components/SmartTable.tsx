@@ -1046,7 +1046,7 @@ function Table({
         ({index, style}) => {
             const row = rows[index]
             prepareRow(row);
-            console.log('Rendering Row:', row);
+            // console.log('Rendering Row:', row);
 
             return (
                 <div {...row.getRowProps({style})} className="tr">
