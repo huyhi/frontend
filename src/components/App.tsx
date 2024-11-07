@@ -1638,6 +1638,7 @@ class App extends React.Component<{}, AppState> {
                 </LoadingOverlay>
             );
         }
+        console.log('dataFiltered["all"]',this.state.dataFiltered["all"])
         return (
             <>
                 <LoadingOverlay

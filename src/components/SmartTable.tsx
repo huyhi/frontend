@@ -993,10 +993,10 @@ function Table({
 
     React.useEffect(() => {
         // `filtered rows` changed due to local/global filters.
-        if (tableType !== "all") {
+        // if (tableType !== "all") {
             // Only update filtered papers for non-"all" table types
-            setFilteredPapers(rows.map(r => r.original));
-        }
+        setFilteredPapers(rows.map(r => r.original));
+        // }
     }, [rows]);
 
     // Reference to the VariableSizeList element
