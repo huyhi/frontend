@@ -619,12 +619,14 @@ function Table({
                    openGScholar,
                    loadMoreData,
                    hasMoreData,
+                   loadAllData,
                    dataAuthors,
                    dataSources,
                    dataKeywords
                }) {
 
     const [isLoading, setIsLoading] = useState(false);
+    const [isLoadingAll, setIsLoadingAll] = useState(false);
     const filterTypes = React.useMemo(
         () => ({
             multiple: (rows, id, filterValue) => {
@@ -1112,6 +1114,18 @@ function Table({
             event.target.blur(); // Now safe to use the event object here
         });
     };
+    const handleLoadAllData = (event) => {
+        event.persist(); // Prevent React from reusing the event object
+
+        setIsLoadingAll(true); // New state for loading all data
+        loadAllData().then(() => {
+            setIsLoadingAll(false); // Reset the loading state after completion
+        }).finally(() => {
+            event.target.blur(); // Release event object safely
+        });
+    };
+
+
 
 
     // Render the UI for your table
@@ -1194,7 +1208,9 @@ function Table({
                 <div>
                     <div className="tr">
                         <div className="th">
-                            <Text variant="mediumPlus">Showing&nbsp;<b>{rows.length}/{data.length}</b>
+                            {/*<Text variant="mediumPlus">Showing&nbsp;<b>{rows.length}/{data.length}</b>*/}
+                            {/*hard coding for speed*/}
+                            <Text variant="mediumPlus">Showing&nbsp;<b>{rows.length}/66692</b>
                             </Text>
                             &nbsp;&nbsp;
                             <div style={{float: "right"}}>
@@ -1406,6 +1422,13 @@ function Table({
                             >
                                 {isLoading ? 'Loading...' : 'Load More'}
                             </Button>
+                            <Button
+                                onClick={handleLoadAllData}
+                                disabled={isLoadingAll || isLoadingAll} // Disable if either is loading
+                                className={`load-all-button ${isLoadingAll ? 'loading' : ''}`}
+                            >
+                                {isLoadingAll ? 'Loading All...' : 'Load All'}
+                            </Button>
                         </div>
 
                     )}
@@ -1421,6 +1444,7 @@ export interface SmartTableProps {
     staticMaxYear?: number;
     loadMoreData?: () => Promise<void>;
     hasMoreData?: boolean;
+    loadAllData?: () => Promise<void>;
     globalFilterValue: Array<any>;
     columnFilterValues: Array<any>;
     columnSortByValues: Array<any>;
@@ -1478,7 +1502,7 @@ export const SmartTable: React.FC<{
         columnFilterTypes, updateVisibleColumns, columnsVisible, updateColumnFilterValues,
         columnFilterValues, setFilteredPapers, updateColumnSortByValues, columnSortByValues,
         globalFilterValue, updateGlobalFilterValue, scrollToPaperID, addToSelectNodeIDs,
-        checkoutPapers, summarizePapers, literatureReviewPapers, embeddingType, hasEmbeddings, openGScholar, isInSelectedNodeIDs, loadMoreData, hasMoreData, dataAuthors, dataSources,dataKeywords, staticMinYear,staticMaxYear
+        checkoutPapers, summarizePapers, literatureReviewPapers, embeddingType, hasEmbeddings, openGScholar, isInSelectedNodeIDs, loadMoreData, hasMoreData, loadAllData, dataAuthors, dataSources,dataKeywords, staticMinYear,staticMaxYear
     } = props;
     console.log('staticMinYear',staticMinYear)
     console.log("Authors data:", dataAuthors);
@@ -1582,6 +1606,7 @@ export const SmartTable: React.FC<{
                 openGScholar={openGScholar}
                 loadMoreData={loadMoreData}
                 hasMoreData={hasMoreData}
+                loadAllData={loadAllData}
                 dataAuthors={dataAuthors}  // Pass dataAuthors to Table
                 dataSources={dataSources}  // Pass dataSources to Table
                 dataKeywords={dataKeywords}></Table>

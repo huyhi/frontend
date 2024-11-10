@@ -21,6 +21,7 @@
   display: flex;
   justify-content: center; /* Center horizontally */
   margin-top: 1em;
+  gap: 20px;
 }
 
 .load-more-button {
@@ -41,5 +42,34 @@
 }
 
 .load-more-button:focus {
+  outline: none;
+}
+
+
+/* Styles for the Load More button */
+.load-all-container {
+  display: flex;
+  justify-content: center; /* Center horizontally */
+  margin-top: 1em;
+}
+
+.load-all-button {
+  background-color: white;
+  color: gray;
+  border: 1px solid gray;
+  transition: background-color 0.3s, color 0.3s; /* Add smooth transition */
+}
+
+.load-all-button.loading {
+  background-color: gray;
+  color: white;
+  border: none;
+}
+
+.load-all-button:hover:not(.loading) {
+  background-color: lightgray;
+}
+
+.load-all-button:focus {
   outline: none;
 }

@@ -55,7 +55,7 @@ let [yMin, yMax] = [{
 }]
 
 const hoverColor = "#bbdefb";
-const colorListTableTypes = ['#555555','#eeeeee','#e31a1c','#ff5aac','#ff7f00'];
+const colorListTableTypes = ['#555555','#cccccc','#e31a1c','#ff5aac','#ff7f00'];
 const colorListCategoricalType = ['#a6cee3', '#222222','#e31a1c','#ff7f00','#1f78b4','#dddddd', '#b2df8a','#33a02c','#fb9a99','#fdbf6f','#cab2d6','#6a3d9a','#ffff99','#b15928'];
 const colorListNumericalType = ['#fc8d59', '#91cf60'];
 
@@ -300,7 +300,7 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
                         colorByMap[colorByValue] = [colorValueIndex++, colorListTableTypes[4]];
                     }
                 }else{
-                    colorByValue = "Unfiltered";
+                    colorByValue = "UnFiltered";
                     if(!(colorByValue in colorByMap)){
                         colorByMap[colorByValue] = [colorValueIndex++, colorListTableTypes[0]];
                     }

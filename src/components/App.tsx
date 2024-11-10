@@ -119,6 +119,7 @@ interface AppState {
     metadataInitialized: boolean;
     eventOrigin: string;
     spinner: boolean;
+    loadingText: string;
     globalFilterValue: TableTypes;
     columnsVisible: TableTypes;
     columnSortByValues: TableTypes;
@@ -168,7 +169,6 @@ interface AppState {
     chatSelectedPaper: string;
     offset: number;
     hasMoreData: boolean;
-
 }
 
 interface TabType {
@@ -208,6 +208,7 @@ class App extends React.Component<{}, AppState> {
             maxYear: null,
             metadataInitialized: false,
             spinner: true,
+            loadingText: 'loading meta data...',
             isCiteUsCalloutVisible: false,
             columnFilterTypes: {
                 "ID": "default",
@@ -348,7 +349,7 @@ class App extends React.Component<{}, AppState> {
                 '1': {chatText: '', chatHistory: [], chatResponse: '', chatSelectedPaper: ''}  // Initial state for the first dialog
             },
             offset: 0,
-            hasMoreData: true
+            hasMoreData: true,
         }
     }
     loadMoreData = async () => {
@@ -361,76 +362,159 @@ class App extends React.Component<{}, AppState> {
         const limit = 1000; // Specify limit of records to fetch
 
         if (hasMoreData) {
-            console.log('columnFilterValues[all]',columnFilterValues["all"]);
-            const author = columnFilterValues["all"]
-                .find(f => f.id === 'Authors')?.value?.flat() || []; // Flatten any nested array
-            // console.log('Processed authors:', author);
-            const source = columnFilterValues["all"].find(f => f.id === 'Source')?.value;
-            const keyword = columnFilterValues["all"]
-                .find(f => f.id === 'Keywords')?.value?.flat() || [];
-            // console.log('Processed keywords:', keyword);
-            const yearFilter = columnFilterValues["all"].find(f => f.id === 'Year');
-            // console.log('yearFilter',yearFilter)
-            const minYear = yearFilter ? yearFilter.value[0] : undefined;
-            // console.log('minYear',minYear)
-            const maxYear = yearFilter ? yearFilter.value[1] : undefined;
-            const searchText = columnFilterValues["all"]
-                .filter(f => f.id === 'Title') // Filter for entries with id 'Title'
-                .map(f => f.value) // Extract the value for each entry
-                .join(' ');
-            // Extract CitationCounts (assuming it is a range with [min, max])
-            const abstract = columnFilterValues["all"]
-                .find(f => f.id === 'Abstract')?.value || undefined;
-            const citationCountsFilter = columnFilterValues["all"]
-                .find(f => f.id === 'CitationCounts');
-            const minCitationCount = citationCountsFilter ? citationCountsFilter.value[0] : undefined;
-            const maxCitationCount = citationCountsFilter ? citationCountsFilter.value[1] : undefined;
+            this.setState({ spinner: true, loadingText: 'Loading More Data...' });
+            try{
+                const author = columnFilterValues["all"]
+                    .find(f => f.id === 'Authors')?.value?.flat() || []; // Flatten any nested array
+                // console.log('Processed authors:', author);
+                const source = columnFilterValues["all"].find(f => f.id === 'Source')?.value;
+                const keyword = columnFilterValues["all"]
+                    .find(f => f.id === 'Keywords')?.value?.flat() || [];
+                // console.log('Processed keywords:', keyword);
+                const yearFilter = columnFilterValues["all"].find(f => f.id === 'Year');
+                // console.log('yearFilter',yearFilter)
+                const minYear = yearFilter ? yearFilter.value[0] : undefined;
+                // console.log('minYear',minYear)
+                const maxYear = yearFilter ? yearFilter.value[1] : undefined;
+                const searchText = columnFilterValues["all"]
+                    .filter(f => f.id === 'Title') // Filter for entries with id 'Title'
+                    .map(f => f.value) // Extract the value for each entry
+                    .join(' ');
+                // Extract CitationCounts (assuming it is a range with [min, max])
+                const abstract = columnFilterValues["all"]
+                    .find(f => f.id === 'Abstract')?.value || undefined;
+                const citationCountsFilter = columnFilterValues["all"]
+                    .find(f => f.id === 'CitationCounts');
+                const minCitationCount = citationCountsFilter ? citationCountsFilter.value[0] : undefined;
+                const maxCitationCount = citationCountsFilter ? citationCountsFilter.value[1] : undefined;
 
-            // Extract ID
-            const idValue = columnFilterValues["all"].find(f => f.id === 'ID')?.value;
-            let idList;
-            if (idValue) {
-                idList = [idValue]; // Wrap in an array if it's not already
-            } else {
-                idList = undefined; // Keep it undefined if there is no value
+                // Extract ID
+                const idValue = columnFilterValues["all"].find(f => f.id === 'ID')?.value;
+                let idList;
+                if (idValue) {
+                    idList = [idValue]; // Wrap in an array if it's not already
+                } else {
+                    idList = undefined; // Keep it undefined if there is no value
+                }
+
+                const queryPayload = {
+                    offset,
+                    limit,
+                    title: searchText && searchText.length > 0 ? searchText : undefined,
+                    author: author?.length ? author : undefined,
+                    source: source?.length ? source : undefined,
+                    keyword: keyword?.length ? keyword : undefined,
+                    min_year: minYear || undefined,
+                    max_year: maxYear || undefined,
+                    abstract: abstract || undefined,
+                    min_citation_count: minCitationCount || undefined,
+                    max_citation_count: maxCitationCount || undefined,
+                    id_list: idList || undefined,
+                };
+                console.log('Query Payload:', queryPayload);
+                const response = await fetch(`${baseUrl}getPapers`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(queryPayload),
+                });
+                const newData = await response.json();
+                // console.log("Fetched data:", newData);
+                const combinedData = [...this.state.dataAll, ...newData];
+                const uniqueData = Array.from(new Set(combinedData.map(item => item.ID))).map(
+                    id => combinedData.find(item => item.ID === id)
+                );
+
+                this.setState((prevState) => ({
+                    dataAll: uniqueData,
+                    offset: prevState.offset + limit,
+                    hasMoreData: newData.length === limit,
+                    spinner: false,
+                    loadingText: 'Loading Meta Data...',// Check if more data is available
+                }));
+            }catch (error) {
+                console.error("Error loading more data:", error);
+                this.setState({ spinner: false });
+                this.setState({ loadingText: 'Loading...' });
             }
 
-            const queryPayload = {
-                offset,
-                limit,
-                title: searchText && searchText.length > 0 ? searchText : undefined,
-                author: author?.length ? author : undefined,
-                source: source?.length ? source : undefined,
-                keyword: keyword?.length ? keyword : undefined,
-                min_year: minYear || undefined,
-                max_year: maxYear || undefined,
-                abstract: abstract || undefined,
-                min_citation_count: minCitationCount || undefined,
-                max_citation_count: maxCitationCount || undefined,
-                id_list: idList || undefined,
-            };
-            console.log('Query Payload:', queryPayload);
-            const response = await fetch(`${baseUrl}getPapers`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(queryPayload),
-            });
-            const newData = await response.json();
-            // console.log("Fetched data:", newData);
-            const combinedData = [...this.state.dataAll, ...newData];
-            const uniqueData = Array.from(new Set(combinedData.map(item => item.ID))).map(
-                id => combinedData.find(item => item.ID === id)
-            );
-
-            this.setState((prevState) => ({
-                dataAll: uniqueData,
-                offset: prevState.offset + limit,
-                hasMoreData: newData.length === limit, // Check if more data is available
-            }));
         }
-    }
+    };
+    loadAllData = async () => {
+        const {
+            globalFilterValue,
+            hasMoreData,
+            columnFilterValues,
+            offset,
+        } = this.state;
+        if(hasMoreData){
+            this.setState({ spinner: true, loadingText: 'Loading All Data...' });
+            try {
+                const limit = -1;  // Indicates to fetch all records at once
+                const offset=0;
+                const author = columnFilterValues["all"]
+                    .find(f => f.id === 'Authors')?.value?.flat() || [];
+                const source = columnFilterValues["all"].find(f => f.id === 'Source')?.value;
+                const keyword = columnFilterValues["all"]
+                    .find(f => f.id === 'Keywords')?.value?.flat() || [];
+                const yearFilter = columnFilterValues["all"].find(f => f.id === 'Year');
+                const minYear = yearFilter ? yearFilter.value[0] : undefined;
+                const maxYear = yearFilter ? yearFilter.value[1] : undefined;
+                const searchText = columnFilterValues["all"]
+                    .filter(f => f.id === 'Title')
+                    .map(f => f.value)
+                    .join(' ');
+                const abstract = columnFilterValues["all"]
+                    .find(f => f.id === 'Abstract')?.value || undefined;
+                const citationCountsFilter = columnFilterValues["all"]
+                    .find(f => f.id === 'CitationCounts');
+                const minCitationCount = citationCountsFilter ? citationCountsFilter.value[0] : undefined;
+                const maxCitationCount = citationCountsFilter ? citationCountsFilter.value[1] : undefined;
+
+                const queryPayload = {
+                    offset,
+                    limit,
+                    title: searchText && searchText.length > 0 ? searchText : undefined,
+                    author: author?.length ? author : undefined,
+                    source: source?.length ? source : undefined,
+                    keyword: keyword?.length ? keyword : undefined,
+                    min_year: minYear || undefined,
+                    max_year: maxYear || undefined,
+                    abstract: abstract || undefined,
+                    min_citation_count: minCitationCount || undefined,
+                    max_citation_count: maxCitationCount || undefined,
+                };
+
+                const response = await fetch(`${baseUrl}getPapers`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(queryPayload),
+                });
+
+                const allData = await response.json();
+
+                this.setState({
+                    dataAll: allData,
+                    offset: allData.length,
+                    hasMoreData: false,
+                    spinner: false,
+                    loadingText: 'Loading...',// All data loaded, so no more data to load
+                });
+
+            } catch (error) {
+                console.error("Error loading all data:", error);
+                this.setState({ spinner: false });
+                this.setState({ loadingText: 'Loading...' });
+            }
+        }
+
+    };
+
+
+
 
     addNewTab = () => {
         const newId = (this.state.tabs.length + 1).toString(); // Generate new ID
@@ -586,6 +670,7 @@ class App extends React.Component<{}, AppState> {
                 maxYear,
                 metadataInitialized: true,
                 spinner: false,
+                loadingText: 'Loading...',
             });
         } catch (error) {
             console.error("Error fetching metadata:", error);
@@ -1127,6 +1212,7 @@ class App extends React.Component<{}, AppState> {
 
         const allPapersTableProps: SmartTableProps = {
             loadMoreData: this.loadMoreData,
+            loadAllData: this.loadAllData,
             hasMoreData: this.state.hasMoreData,
             tableType: "all",
             embeddingType: this.state.embeddingType.key as string,
@@ -1620,13 +1706,13 @@ class App extends React.Component<{}, AppState> {
                 </div>
             );
         }
-        const { metadataInitialized, spinner } = this.state;
+        const { metadataInitialized, spinner ,loadingText} = this.state;
         if (!metadataInitialized) {
             return (
                 <LoadingOverlay
                     active={spinner}
                     spinner
-                    text={'Loading Metadata...'}
+                    text={loadingText}
                     styles={{
                         wrapper: {},
                         overlay: (base) => ({ ...base, background: 'rgba(0, 0, 0, 0.5)' }),
@@ -1644,7 +1730,7 @@ class App extends React.Component<{}, AppState> {
                 <LoadingOverlay
                     active={this.state.spinner}
                     spinner
-                    text={'Loading'}
+                    text={'Loading meta data'}
                     styles={{
                         wrapper: {},
                         overlay: (base) => ({...base, background: 'rgba(0, 0, 0, 0.5)'}),
