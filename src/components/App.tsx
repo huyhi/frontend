@@ -116,6 +116,8 @@ interface AppState {
     // Will change
     minYear: number | null;
     maxYear: number | null;
+    minCitationCounts: number | null;
+    maxCitationCounts: number | null;
     metadataInitialized: boolean;
     eventOrigin: string;
     spinner: boolean;
@@ -206,6 +208,8 @@ class App extends React.Component<{}, AppState> {
         this.state = {
             minYear: null,
             maxYear: null,
+            minCitationCounts: null,
+            maxCitationCounts: null,
             metadataInitialized: false,
             spinner: true,
             loadingText: 'loading meta data...',
@@ -364,6 +368,7 @@ class App extends React.Component<{}, AppState> {
         if (hasMoreData) {
             this.setState({ spinner: true, loadingText: 'Loading More Data...' });
             try{
+                console.log('columnFilterValues["all"]',columnFilterValues["all"]);
                 const author = columnFilterValues["all"]
                     .find(f => f.id === 'Authors')?.value?.flat() || []; // Flatten any nested array
                 // console.log('Processed authors:', author);
@@ -372,10 +377,14 @@ class App extends React.Component<{}, AppState> {
                     .find(f => f.id === 'Keywords')?.value?.flat() || [];
                 // console.log('Processed keywords:', keyword);
                 const yearFilter = columnFilterValues["all"].find(f => f.id === 'Year');
+                const citationFilter = columnFilterValues["all"].find(f => f.id === 'CitationCounts');
+                console.log('citationFilter',citationFilter);
                 // console.log('yearFilter',yearFilter)
                 const minYear = yearFilter ? yearFilter.value[0] : undefined;
                 // console.log('minYear',minYear)
                 const maxYear = yearFilter ? yearFilter.value[1] : undefined;
+                const minCitationCounts=citationFilter?citationFilter.value[0]:undefined;
+                const maxCitationCounts=citationFilter?citationFilter.value[1]:undefined;
                 const searchText = columnFilterValues["all"]
                     .filter(f => f.id === 'Title') // Filter for entries with id 'Title'
                     .map(f => f.value) // Extract the value for each entry
@@ -383,10 +392,6 @@ class App extends React.Component<{}, AppState> {
                 // Extract CitationCounts (assuming it is a range with [min, max])
                 const abstract = columnFilterValues["all"]
                     .find(f => f.id === 'Abstract')?.value || undefined;
-                const citationCountsFilter = columnFilterValues["all"]
-                    .find(f => f.id === 'CitationCounts');
-                const minCitationCount = citationCountsFilter ? citationCountsFilter.value[0] : undefined;
-                const maxCitationCount = citationCountsFilter ? citationCountsFilter.value[1] : undefined;
 
                 // Extract ID
                 const idValue = columnFilterValues["all"].find(f => f.id === 'ID')?.value;
@@ -407,8 +412,8 @@ class App extends React.Component<{}, AppState> {
                     min_year: minYear || undefined,
                     max_year: maxYear || undefined,
                     abstract: abstract || undefined,
-                    min_citation_count: minCitationCount || undefined,
-                    max_citation_count: maxCitationCount || undefined,
+                    min_citation_counts: minCitationCounts || undefined,
+                    max_citation_counts: maxCitationCounts || undefined,
                     id_list: idList || undefined,
                 };
                 console.log('Query Payload:', queryPayload);
@@ -420,6 +425,7 @@ class App extends React.Component<{}, AppState> {
                     body: JSON.stringify(queryPayload),
                 });
                 const newData = await response.json();
+                console.log('newData',newData);
                 // console.log("Fetched data:", newData);
                 const combinedData = [...this.state.dataAll, ...newData];
                 const uniqueData = Array.from(new Set(combinedData.map(item => item.ID))).map(
@@ -461,16 +467,16 @@ class App extends React.Component<{}, AppState> {
                 const yearFilter = columnFilterValues["all"].find(f => f.id === 'Year');
                 const minYear = yearFilter ? yearFilter.value[0] : undefined;
                 const maxYear = yearFilter ? yearFilter.value[1] : undefined;
+                const citationFilter = columnFilterValues["all"].find(f => f.id === 'CitationCounts');
+                const minCitationCounts=citationFilter?citationFilter.value[0]:undefined;
+                const maxCitationCounts=citationFilter?citationFilter.value[1]:undefined;
                 const searchText = columnFilterValues["all"]
                     .filter(f => f.id === 'Title')
                     .map(f => f.value)
                     .join(' ');
                 const abstract = columnFilterValues["all"]
                     .find(f => f.id === 'Abstract')?.value || undefined;
-                const citationCountsFilter = columnFilterValues["all"]
-                    .find(f => f.id === 'CitationCounts');
-                const minCitationCount = citationCountsFilter ? citationCountsFilter.value[0] : undefined;
-                const maxCitationCount = citationCountsFilter ? citationCountsFilter.value[1] : undefined;
+
 
                 const queryPayload = {
                     offset,
@@ -482,8 +488,8 @@ class App extends React.Component<{}, AppState> {
                     min_year: minYear || undefined,
                     max_year: maxYear || undefined,
                     abstract: abstract || undefined,
-                    min_citation_count: minCitationCount || undefined,
-                    max_citation_count: maxCitationCount || undefined,
+                    min_citation_counts: minCitationCounts || undefined,
+                    max_citation_counts: maxCitationCounts || undefined,
                 };
 
                 const response = await fetch(`${baseUrl}getPapers`, {
@@ -655,10 +661,12 @@ class App extends React.Component<{}, AppState> {
                 headers: { 'Content-Type': 'application/json' },
             });
             const data = await response.json();
-            console.log("_metaData.years", data.years);
+            console.log("_metaData.citation_counts", data.citation_counts);
 
             const minYear = data.years.length > 0 ? Math.min(...data.years) : 1975;
             const maxYear = data.years.length > 0 ? Math.max(...data.years) : 2024;
+            const minCitationCounts = data.citation_counts.length > 0 ? Math.min(...data.citation_counts) : -1;
+            const maxCitationCounts = data.citation_counts.length > 0 ? Math.max(...data.citation_counts) : 1000;
 
             this.setState({
                 metaData: data,
@@ -668,6 +676,8 @@ class App extends React.Component<{}, AppState> {
                 dataTitles: data.titles,
                 minYear,
                 maxYear,
+                minCitationCounts,
+                maxCitationCounts,
                 metadataInitialized: true,
                 spinner: false,
                 loadingText: 'Loading...',
@@ -1283,7 +1293,9 @@ class App extends React.Component<{}, AppState> {
             dataSources:this.state.dataSources,
             dataKeywords: this.state.dataKeywords,
             staticMinYear: this.state.minYear,   // Pass minYear to SmartTable
-            staticMaxYear: this.state.maxYear
+            staticMaxYear: this.state.maxYear,
+            staticMinCitationCounts: this.state.minCitationCounts,   // Pass minYear to SmartTable
+            staticMaxCitationCounts: this.state.maxCitationCounts,
         }
 
 
@@ -1724,13 +1736,12 @@ class App extends React.Component<{}, AppState> {
                 </LoadingOverlay>
             );
         }
-        console.log('dataFiltered["all"]',this.state.dataFiltered["all"])
         return (
             <>
                 <LoadingOverlay
                     active={this.state.spinner}
                     spinner
-                    text={'Loading meta data'}
+                    text={'Loading data'}
                     styles={{
                         wrapper: {},
                         overlay: (base) => ({...base, background: 'rgba(0, 0, 0, 0.5)'}),

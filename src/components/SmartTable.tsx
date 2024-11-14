@@ -44,7 +44,8 @@ import "react-virtualized-select/styles.css";
 import VirtualizedSelect from 'react-virtualized-select';
 import createFilterOptions from "react-select-fast-filter-options";
 import * as d3 from 'd3';
-import {useCallback, useEffect, useState} from "react";
+import {useCallback, useEffect, useRef, useState} from "react";
+import {uniqueId} from "lodash";
 
 const indexStrategy = new JsSearch.PrefixIndexStrategy();
 
@@ -284,8 +285,8 @@ function GlobalFilter({
 
 function NumberRangeColumnFilter({
          column: { filterValue, setFilter, id },
-         staticMinYear = 1975, // Default to 1975 if not provided
-         staticMaxYear = 2024 // Default to 2024 if not provided
+         min ,
+         max
      }){
     // const range = React.useMemo(() => {
     //     let min = preFilteredRows.length ? preFilteredRows[0].values[id] : 0
@@ -297,12 +298,10 @@ function NumberRangeColumnFilter({
     //     })
     //     return [min, max];
     // }, [preFilteredRows]);
-    const range = [staticMinYear, staticMaxYear];
+    const defaultRange = [0, 1611]; // Provide general defaults if min/max are not defined
+    const range = (min !== undefined && max !== undefined) ? [min, max] : defaultRange;
 
-    const [value, setValue] = React.useState<number[]>(range);
-    // React.useEffect(() => {
-    //     setValue(range);
-    // }, [range]);
+    const [value, setValue] = useState(filterValue?.length ? filterValue : range);
 
     React.useEffect(() => {
         if (filterValue && filterValue.length > 0) {
@@ -312,13 +311,14 @@ function NumberRangeColumnFilter({
 
     const [step, marks] = React.useMemo(() => {
         const step = range[1] > 2 ? 1 : 0.001;
-        return [step, [
+        const uniqueMarks = Array.from(new Set([
             { value: range[0], label: range[0].toString() },
             { value: value[0], label: value[0].toString() },
             { value: value[1], label: value[1].toString() },
             { value: range[1], label: range[1].toString() },
-        ]
-    ];
+        ])); // Remove duplicates to ensure unique keys
+
+        return [step, uniqueMarks];
     }, [value, range]);
 
     function valueText(value: number, index: number) {
@@ -334,17 +334,13 @@ function NumberRangeColumnFilter({
                 step={step}
                 min={range[0]}
                 max={range[1]}
-                onChangeCommitted={(event: any, val: any) => {
-                    setValue(val);
-                    setFilter(val);
-                }}
-                onChange={(event: any, val: any) => {
-                    setValue(val);
-                }}
+                onChangeCommitted={(event, val) => setFilter(val)}
+                onChange={(event, val) => setValue(val)}
                 valueLabelDisplay="auto"
                 aria-labelledby="range-slider"
                 getAriaValueText={valueText}
                 marks={marks}
+                key={`slider-${id}`}
             />
         </div>
     )
@@ -554,26 +550,28 @@ function DefaultColumnFilter({
         />)
 }
 
-function filterMapping(filter, dataAuthors, dataSources,dataKeywords,staticMinYear = 1975, staticMaxYear = 2024) {
+function filterMapping(filter, dataAuthors, dataSources, dataKeywords, columnId, staticMinYear = 1975, staticMaxYear = 2024, staticMinCitationCounts = 0, staticMaxCitationCounts = 1000) {
     if (filter === "multiselect") {
-        return { Filter: (props) => <MultiSelectColumnFilter {...props} dataAuthors={dataAuthors} dataSources={dataSources} dataKeywords={dataKeywords}/>, filter: 'includesValue' };
+        return { Filter: (props) => <MultiSelectColumnFilter {...props} dataAuthors={dataAuthors} dataSources={dataSources} dataKeywords={dataKeywords} />, filter: 'includesValue' };
     } else if (filter === "default") {
         return { Filter: DefaultColumnFilter, filter: 'fuzzyText' };
     } else if (filter === "range") {
+        // Check if the column is Year or CitationCount to apply specific ranges
+        const min = columnId === 'Year' ? staticMinYear : columnId === 'CitationCount' ? staticMinCitationCounts : undefined;
+        const max = columnId === 'Year' ? staticMaxYear : columnId === 'CitationCount' ? staticMaxCitationCounts : undefined;
         return {
             Filter: (props) => (
                 <NumberRangeColumnFilter
                     {...props}
-                    staticMinYear={staticMinYear}
-                    staticMaxYear={staticMaxYear}
+                    id={columnId}
+                    min={min ?? undefined}
+                    max={max ?? undefined}
                 />
             ),
             filter: 'between',
         };
     } else if (filter === "multiselect-tokens") {
-        return { Filter: (props) => <MultiSelectTokensColumnFilter {...props} dataAuthors={dataAuthors} dataSources={dataSources} dataKeywords={dataKeywords}/>, filter: 'includesValue' };
-
-        return { Filter: MultiSelectTokensColumnFilter, filter: 'includesValue' };
+        return { Filter: (props) => <MultiSelectTokensColumnFilter {...props} dataAuthors={dataAuthors} dataSources={dataSources} dataKeywords={dataKeywords} />, filter: 'includesValue' };
     }
 }
 
@@ -1442,6 +1440,8 @@ export interface SmartTableProps {
     // State
     staticMinYear?: number;  // Optional properties for min and max years
     staticMaxYear?: number;
+    staticMinCitationCounts?:number;
+    staticMaxCitationCounts?:number;
     loadMoreData?: () => Promise<void>;
     hasMoreData?: boolean;
     loadAllData?: () => Promise<void>;
@@ -1502,22 +1502,46 @@ export const SmartTable: React.FC<{
         columnFilterTypes, updateVisibleColumns, columnsVisible, updateColumnFilterValues,
         columnFilterValues, setFilteredPapers, updateColumnSortByValues, columnSortByValues,
         globalFilterValue, updateGlobalFilterValue, scrollToPaperID, addToSelectNodeIDs,
-        checkoutPapers, summarizePapers, literatureReviewPapers, embeddingType, hasEmbeddings, openGScholar, isInSelectedNodeIDs, loadMoreData, hasMoreData, loadAllData, dataAuthors, dataSources,dataKeywords, staticMinYear,staticMaxYear
+        checkoutPapers, summarizePapers, literatureReviewPapers, embeddingType, hasEmbeddings, openGScholar,
+        isInSelectedNodeIDs, loadMoreData, hasMoreData, loadAllData, dataAuthors, dataSources,
+        dataKeywords, staticMinYear,staticMaxYear,staticMinCitationCounts,staticMaxCitationCounts
     } = props;
-    console.log('staticMinYear',staticMinYear)
-    console.log("Authors data:", dataAuthors);
-    console.log("Sources data:", dataSources);
-    console.log("Keywords data:", dataKeywords);
-    console.log("columnFilterValues:", columnFilterValues);
+    const minYearRef = useRef(staticMinYear);
+    const maxYearRef = useRef(staticMaxYear);
+    const minCitationCountRef = useRef(staticMinCitationCounts);
+    const maxCitationCountRef = useRef(staticMaxCitationCounts);
+
+    const [minYear, setMinYear] = useState(minYearRef.current ?? null);
+    const [maxYear, setMaxYear] = useState(maxYearRef.current ?? null);
+    const [minCitationCount, setMinCitationCount] = useState(minCitationCountRef.current ?? null);
+    const [maxCitationCount, setMaxCitationCount] = useState(maxCitationCountRef.current ?? null);
+
+    useEffect(() => {
+        if (minYearRef.current !== undefined) setMinYear(minYearRef.current);
+        if (maxYearRef.current !== undefined) setMaxYear(maxYearRef.current);
+        if (minCitationCountRef.current !== undefined) setMinCitationCount(minCitationCountRef.current);
+        if (maxCitationCountRef.current !== undefined) setMaxCitationCount(maxCitationCountRef.current);
+    }, []);
+    console.log("minYear:", minYear, "maxYear:", maxYear);
+    console.log("minCitationCount:", minCitationCount, "maxCitationCount:", maxCitationCount);
+
 
     const data = tableData[tableType];
-    console.log("tableType:",tableType);
-    console.log("data:",tableData[tableType]);
     const columns = React.useMemo(() => columnIds.map((c) => {
         const columnHeader = {Header: c, accessor: c};
         const columnWidth = columnWidths[c];
         // console.log('columnFilterTypes passed dataSources',dataSources);
-        const columnFilter = filterMapping(columnFilterTypes[c], dataAuthors,dataSources,dataKeywords,staticMinYear, staticMaxYear);
+        const columnFilter = filterMapping(
+            columnFilterTypes[c],
+            dataAuthors,
+            dataSources,
+            dataKeywords,
+            c,  // Pass column ID here
+            staticMinYear,
+            staticMaxYear,
+            staticMinCitationCounts,
+            staticMaxCitationCounts
+        );
 
         const columnMeta = tableData?.metaData ? tableData.metaData[c] : '';
         // let columnMeta = {metadata: ''}
@@ -1529,8 +1553,17 @@ export const SmartTable: React.FC<{
 
         console.log('outer metadata', {columnMeta})
 
-        return {...columnHeader, ...columnWidth, ...columnFilter, metadata: columnMeta};
-    }), [columnIds, columnWidths, columnFilterTypes, tableData.metaData]);
+        return { ...columnHeader, ...columnWidth, ...columnFilter, metadata: columnMeta };
+    }), [
+        columnIds,
+        columnWidths,
+        columnFilterTypes,
+        tableData.metaData,
+        staticMinYear,
+        staticMaxYear,
+        staticMinCitationCounts,
+        staticMaxCitationCounts
+    ]);
 
     // We need to keep the table from resetting the pageIndex when we
     // Update data. So we can keep track of that flag with a ref.
