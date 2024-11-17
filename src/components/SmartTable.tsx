@@ -992,12 +992,19 @@ function Table({
     }, [globalFilter]);
 
     React.useEffect(() => {
-        // `filtered rows` changed due to local/global filters.
-        // if (tableType !== "all") {
-            // Only update filtered papers for non-"all" table types
-        setFilteredPapers(rows.map(r => r.original));
-        // }
-    }, [rows]);
+        // Apply filters only to currently loaded data
+        const filteredData = data.filter(row => {
+            return filters.every(filter => {
+                // Example: Customize this to match your filter logic
+                const columnValue = row[filter.id];
+                if (Array.isArray(filter.value)) {
+                    return filter.value.includes(columnValue);
+                }
+                return columnValue === filter.value;
+            });
+        });
+        setFilteredPapers(filteredData);
+    }, [filters, data]); // Depend only on filters and current data
 
     // Reference to the VariableSizeList element
     const listRef: any = React.useRef(null);
@@ -1491,6 +1498,7 @@ export interface SmartTableProps {
     dataAuthors?: any[];
     dataSources?: any[];
     dataKeywords?: any[];
+    applyLocalFilters?: Function;
 }
 
 export const SmartTable: React.FC<{
@@ -1504,7 +1512,7 @@ export const SmartTable: React.FC<{
         globalFilterValue, updateGlobalFilterValue, scrollToPaperID, addToSelectNodeIDs,
         checkoutPapers, summarizePapers, literatureReviewPapers, embeddingType, hasEmbeddings, openGScholar,
         isInSelectedNodeIDs, loadMoreData, hasMoreData, loadAllData, dataAuthors, dataSources,
-        dataKeywords, staticMinYear,staticMaxYear,staticMinCitationCounts,staticMaxCitationCounts
+        dataKeywords, staticMinYear,staticMaxYear,staticMinCitationCounts,staticMaxCitationCounts, applyLocalFilters
     } = props;
     const minYearRef = useRef(staticMinYear);
     const maxYearRef = useRef(staticMaxYear);
@@ -1524,9 +1532,12 @@ export const SmartTable: React.FC<{
     }, []);
     console.log("minYear:", minYear, "maxYear:", maxYear);
     console.log("minCitationCount:", minCitationCount, "maxCitationCount:", maxCitationCount);
+    console.log("dataFiltered",dataFiltered);
 
+    const [filteredLocalData, setFilteredLocalData] = useState([]);
 
-    const data = tableData[tableType];
+    const data =tableData[tableType];
+
     const columns = React.useMemo(() => columnIds.map((c) => {
         const columnHeader = {Header: c, accessor: c};
         const columnWidth = columnWidths[c];

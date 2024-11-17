@@ -356,6 +356,7 @@ class App extends React.Component<{}, AppState> {
             hasMoreData: true,
         }
     }
+
     loadMoreData = async () => {
         const {
             offset,
@@ -364,11 +365,11 @@ class App extends React.Component<{}, AppState> {
             columnFilterValues,
         } = this.state;
         const limit = 1000; // Specify limit of records to fetch
-
+        console.log("loadMoreData");
         if (hasMoreData) {
-            this.setState({ spinner: true, loadingText: 'Loading More Data...' });
-            try{
-                console.log('columnFilterValues["all"]',columnFilterValues["all"]);
+            this.setState({spinner: true, loadingText: 'Loading More Data...'});
+            try {
+                console.log('columnFilterValues["all"]', columnFilterValues["all"]);
                 const author = columnFilterValues["all"]
                     .find(f => f.id === 'Authors')?.value?.flat() || []; // Flatten any nested array
                 // console.log('Processed authors:', author);
@@ -378,13 +379,13 @@ class App extends React.Component<{}, AppState> {
                 // console.log('Processed keywords:', keyword);
                 const yearFilter = columnFilterValues["all"].find(f => f.id === 'Year');
                 const citationFilter = columnFilterValues["all"].find(f => f.id === 'CitationCounts');
-                console.log('citationFilter',citationFilter);
+                console.log('citationFilter', citationFilter);
                 // console.log('yearFilter',yearFilter)
                 const minYear = yearFilter ? yearFilter.value[0] : undefined;
                 // console.log('minYear',minYear)
                 const maxYear = yearFilter ? yearFilter.value[1] : undefined;
-                const minCitationCounts=citationFilter?citationFilter.value[0]:undefined;
-                const maxCitationCounts=citationFilter?citationFilter.value[1]:undefined;
+                const minCitationCounts = citationFilter ? citationFilter.value[0] : undefined;
+                const maxCitationCounts = citationFilter ? citationFilter.value[1] : undefined;
                 const searchText = columnFilterValues["all"]
                     .filter(f => f.id === 'Title') // Filter for entries with id 'Title'
                     .map(f => f.value) // Extract the value for each entry
@@ -425,7 +426,7 @@ class App extends React.Component<{}, AppState> {
                     body: JSON.stringify(queryPayload),
                 });
                 const newData = await response.json();
-                console.log('newData',newData);
+                console.log('newData', newData);
                 // console.log("Fetched data:", newData);
                 const combinedData = [...this.state.dataAll, ...newData];
                 const uniqueData = Array.from(new Set(combinedData.map(item => item.ID))).map(
@@ -434,17 +435,23 @@ class App extends React.Component<{}, AppState> {
 
                 this.setState((prevState) => ({
                     dataAll: uniqueData,
+                    dataFiltered: {
+                        ...prevState.dataFiltered,
+                        all: prevState.columnFilterValues["all"].length
+                            ? prevState.dataFiltered.all // Retain existing filtered data if filters exist
+                            : uniqueData, // Sync with dataAll if no filters are applied
+                    },
                     offset: prevState.offset + limit,
                     hasMoreData: newData.length === limit,
                     spinner: false,
                     loadingText: 'Loading Meta Data...',// Check if more data is available
                 }));
-            }catch (error) {
+                console.log('dataFiltered after loadmore',this.state.dataFiltered);
+            } catch (error) {
                 console.error("Error loading more data:", error);
-                this.setState({ spinner: false });
-                this.setState({ loadingText: 'Loading...' });
+                this.setState({spinner: false});
+                this.setState({loadingText: 'Loading...'});
             }
-
         }
     };
     loadAllData = async () => {
@@ -454,11 +461,11 @@ class App extends React.Component<{}, AppState> {
             columnFilterValues,
             offset,
         } = this.state;
-        if(hasMoreData){
-            this.setState({ spinner: true, loadingText: 'Loading All Data...' });
+        if (hasMoreData) {
+            this.setState({spinner: true, loadingText: 'Loading All Data...'});
             try {
                 const limit = -1;  // Indicates to fetch all records at once
-                const offset=0;
+                const offset = 0;
                 const author = columnFilterValues["all"]
                     .find(f => f.id === 'Authors')?.value?.flat() || [];
                 const source = columnFilterValues["all"].find(f => f.id === 'Source')?.value;
@@ -468,8 +475,8 @@ class App extends React.Component<{}, AppState> {
                 const minYear = yearFilter ? yearFilter.value[0] : undefined;
                 const maxYear = yearFilter ? yearFilter.value[1] : undefined;
                 const citationFilter = columnFilterValues["all"].find(f => f.id === 'CitationCounts');
-                const minCitationCounts=citationFilter?citationFilter.value[0]:undefined;
-                const maxCitationCounts=citationFilter?citationFilter.value[1]:undefined;
+                const minCitationCounts = citationFilter ? citationFilter.value[0] : undefined;
+                const maxCitationCounts = citationFilter ? citationFilter.value[1] : undefined;
                 const searchText = columnFilterValues["all"]
                     .filter(f => f.id === 'Title')
                     .map(f => f.value)
@@ -512,31 +519,90 @@ class App extends React.Component<{}, AppState> {
 
             } catch (error) {
                 console.error("Error loading all data:", error);
-                this.setState({ spinner: false });
-                this.setState({ loadingText: 'Loading...' });
+                this.setState({spinner: false});
+                this.setState({loadingText: 'Loading...'});
             }
         }
 
     };
 
+    applyLocalFilters = (data, columnFilters, globalFilter = null) => {
+        console.log("Applying local filters:");
+        console.log("Column Filters:", columnFilters);
+        console.log("Global Filter:", globalFilter);
+
+        // Check if no filters are applied
+        if (!columnFilters || columnFilters.length === 0) {
+            // console.log("No column filters applied, returning all data.");
+            return data;
+        }
+
+        const filteredData = data.filter((row) => {
+            // console.log("Processing Row:", row);
 
 
+            // Apply column filters
+            const columnFilterPass = columnFilters.every((filter) => {
+                // console.log("Processing id:", filter.id);
+                const columnValue = row[filter.id];
+                // console.log(`Filter: ${filter.id} = ${filter.value}, Row Value: ${columnValue}`);
+                if (filter.id === "Year" || filter.id === "CitationCount") {
+                    const [min, max] = filter.value;
+                    return columnValue >= min && columnValue <= max;
+                }
+                if (columnValue === undefined) {
+                    // console.error(`Column "${filter.id}" does not exist in the row:`, row);
+                    return false; // Skip rows missing the column
+                }
+
+                // Handle array fields like Authors
+                if (Array.isArray(columnValue) && Array.isArray(filter.value)) {
+                    return columnValue.some((val) => filter.value.includes(val));
+                }
+
+                // Handle scalar fields with array-based filters (e.g., exact matches)
+                if (Array.isArray(filter.value)) {
+                    return filter.value.includes(columnValue);
+                }
+
+                // Handle range-based filters (e.g., Year or CitationCount)
+
+
+                // Case-insensitive comparison for scalar values
+                return String(columnValue).toLowerCase() === String(filter.value).toLowerCase();
+            });
+
+            // Apply global filter, if any
+            const globalFilterPass = globalFilter
+                ? Object.values(row).some((value) =>
+                    String(value).toLowerCase().includes(globalFilter.toLowerCase())
+                )
+                : true;
+
+            console.log(`Row Passed Filters: ${columnFilterPass && globalFilterPass}`);
+            return columnFilterPass && globalFilterPass;
+        });
+
+        console.log("Filtered Data Length:", filteredData.length);
+        console.log("Filtered Data:", filteredData);
+        return filteredData;
+    };
 
     addNewTab = () => {
         const newId = (this.state.tabs.length + 1).toString(); // Generate new ID
         this.setState((prevState) => ({
-            tabs: [...prevState.tabs, { id: newId, title: `Chat ${newId}` }],
+            tabs: [...prevState.tabs, {id: newId, title: `Chat ${newId}`}],
             activeKey: newId,
             dialogStates: {
                 ...prevState.dialogStates,
-                [newId]: { chatText: "", chatHistory: [], chatResponse: "", chatSelectedPaper: "" }
+                [newId]: {chatText: "", chatHistory: [], chatResponse: "", chatSelectedPaper: ""}
             }
         }));
     };
     removeTab = (id: string) => {
         const newTabs = this.state.tabs.filter((tab) => tab.id !== id);
         const newActiveKey = newTabs.length > 0 ? newTabs[0].id : "";
-        const newDialogStates = { ...this.state.dialogStates };
+        const newDialogStates = {...this.state.dialogStates};
         delete newDialogStates[id]; // Remove the dialog state for the closed tab
 
         this.setState({
@@ -654,11 +720,11 @@ class App extends React.Component<{}, AppState> {
 
     getMetaData = async () => {
         if (this.state.metadataInitialized) return;
-        this.setState({ spinner: true });
+        this.setState({spinner: true});
         try {
             const response = await fetch(baseUrl + 'getMetaData', {
                 method: 'GET',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {'Content-Type': 'application/json'},
             });
             const data = await response.json();
             console.log("_metaData.citation_counts", data.citation_counts);
@@ -684,13 +750,14 @@ class App extends React.Component<{}, AppState> {
             });
         } catch (error) {
             console.error("Error fetching metadata:", error);
-            this.setState({ spinner: false });
+            this.setState({spinner: false});
         }
     };
 
     componentDidMount() {
         this.loadInitialData();
     }
+
     loadInitialData = async () => {
         try {
             await this.getMetaData(); // Load metadata first
@@ -700,6 +767,7 @@ class App extends React.Component<{}, AppState> {
             console.error("Error loading initial data:", error);
         }
     };
+
     componentDidUpdate(prevProps, prevState) {
         if (prevState.dataAuthors !== this.state.dataAuthors) {
             console.log("dataAuthors updated:", this.state.dataAuthors);
@@ -1220,6 +1288,7 @@ class App extends React.Component<{}, AppState> {
             });
         }
 
+
         const allPapersTableProps: SmartTableProps = {
             loadMoreData: this.loadMoreData,
             loadAllData: this.loadAllData,
@@ -1248,27 +1317,47 @@ class App extends React.Component<{}, AppState> {
             },
             columnFilterValues: this.state.columnFilterValues["all"],
             updateColumnFilterValues: (filter) => {
-                this.setState({
-                    dataAll: [],
-                    offset: 0,
-                    hasMoreData: true,
-                }, () => {
-                    this.loadMoreData();
-                });
+                if (JSON.stringify(this.state.columnFilterValues["all"]) === JSON.stringify(filter)) {
+                    return;
+                }
+                console.log("Updating column filter values:", filter);
+                // Update column filter values without resetting data or calling loadMoreData
                 this.updateStateProp("columnFilterValues", filter, "all");
+                // Apply filters locally to existing data
+                const filteredData = this.applyLocalFilters(this.state.dataAll, filter);
+                console.log("filteredData",filteredData);
+                this.setState((prevState) => ({
+                    dataFiltered: {
+                        ...prevState.dataFiltered,
+                        all: filteredData,
+                    },
+                    dataFilteredID: filteredData.map((paper) => paper.ID),
+                }));
             },
             globalFilterValue: this.state.globalFilterValue["all"],
             updateGlobalFilterValue: (filter) => {
-                this.setState({
-                    dataAll: [],
-                    offset: 0,
-                    hasMoreData: true,
-                }, () => {
-                    this.loadMoreData();
-                });
+                console.log("Updating global filter value:", filter);
+                // Update global filter value without resetting data or calling loadMoreData
                 this.updateStateProp("globalFilterValue", filter, "all");
+
+                // Apply global filter locally to existing data
+                const filteredData = this.applyLocalFilters(this.state.dataAll, this.state.columnFilterValues["all"], filter);
+                console.log("filteredData",filteredData);
+                this.setState((prevState) => ({
+                    dataFiltered: {
+                        ...prevState.dataFiltered,
+                        all: filteredData,
+                    },
+                }));
+
+                // Call the update methods to ensure metadata is updated
+                // Update filtered paper IDs
+                const filteredIDs = filteredData.map((paper) => paper.ID);
+                console.log("filteredIds",filteredIDs);
+                this.setState({ dataFilteredID: filteredIDs });
             },
             columnFilterTypes: this.state.columnFilterTypes,
+
             setFilteredPapers: (dataFiltered) => {
                 updateKeywordCounts(dataFiltered);
                 updateAuthorCounts(dataFiltered);
@@ -1290,12 +1379,13 @@ class App extends React.Component<{}, AppState> {
             openGScholar: openGScholar,
             isInSelectedNodeIDs: isInSelectedNodeIDs,
             dataAuthors: this.state.dataAuthors,
-            dataSources:this.state.dataSources,
+            dataSources: this.state.dataSources,
             dataKeywords: this.state.dataKeywords,
             staticMinYear: this.state.minYear,   // Pass minYear to SmartTable
             staticMaxYear: this.state.maxYear,
             staticMinCitationCounts: this.state.minCitationCounts,   // Pass minYear to SmartTable
             staticMaxCitationCounts: this.state.maxCitationCounts,
+            applyLocalFilters:this.applyLocalFilters,
         }
 
 
@@ -1372,6 +1462,8 @@ class App extends React.Component<{}, AppState> {
             openGScholar: openGScholar,
             isInSelectedNodeIDs: isInSelectedNodeIDs,
         }
+
+
 
         const onChangeSearchTitle = (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newText: string): void => {
             this.setState({searchTitle: newText})
@@ -1718,7 +1810,8 @@ class App extends React.Component<{}, AppState> {
                 </div>
             );
         }
-        const { metadataInitialized, spinner ,loadingText} = this.state;
+
+        const {metadataInitialized, spinner, loadingText} = this.state;
         if (!metadataInitialized) {
             return (
                 <LoadingOverlay
@@ -1727,8 +1820,8 @@ class App extends React.Component<{}, AppState> {
                     text={loadingText}
                     styles={{
                         wrapper: {},
-                        overlay: (base) => ({ ...base, background: 'rgba(0, 0, 0, 0.5)' }),
-                        content: (base) => ({ ...base, color: 'rgba(255, 255, 255, 1)' })
+                        overlay: (base) => ({...base, background: 'rgba(0, 0, 0, 0.5)'}),
+                        content: (base) => ({...base, color: 'rgba(255, 255, 255, 1)'})
                     }}
                 >
                     {/* You can customize this as needed */}
@@ -1756,9 +1849,9 @@ class App extends React.Component<{}, AppState> {
                                 background: "rgba(0,0,0,0.9)",
                                 padding: 8,
                                 paddingBottom: 0,
-                                marginTop:-7,
+                                marginTop: -7,
                                 borderBottom: "1px solid #ededed",
-                                height:60,
+                                height: 60,
                                 display: 'flex',
                                 alignItems: 'center',
                             },
@@ -1940,7 +2033,11 @@ class App extends React.Component<{}, AppState> {
                                             onClick={() => this.removeTab(tab.id)}
                                             aria-label="Close tab"
                                         >
-                                            <FontAwesomeIcon icon={faTimes} style={{ color: "grey", fontSize: "1rem", marginLeft: '8px' }} />
+                                            <FontAwesomeIcon icon={faTimes} style={{
+                                                color: "grey",
+                                                fontSize: "1rem",
+                                                marginLeft: '8px'
+                                            }}/>
                                         </Button>
                                     </Nav.Item>
                                 ))}
@@ -1960,31 +2057,31 @@ class App extends React.Component<{}, AppState> {
                                             viewBox="0 0 24 24"
                                             className="add-icon"
                                         >
-                                            <circle cx="12" cy="12" r="10" stroke="gray" strokeWidth="1.5" fill="none" />
-                                            <line x1="8" y1="12" x2="16" y2="12" stroke="gray" strokeWidth="1.5" />
-                                            <line x1="12" y1="8" x2="12" y2="16" stroke="gray" strokeWidth="1.5" />
+                                            <circle cx="12" cy="12" r="10" stroke="gray" strokeWidth="1.5" fill="none"/>
+                                            <line x1="8" y1="12" x2="16" y2="12" stroke="gray" strokeWidth="1.5"/>
+                                            <line x1="12" y1="8" x2="12" y2="16" stroke="gray" strokeWidth="1.5"/>
                                         </svg>
                                     </Button>
                                 </Nav.Item>
                             </Nav>
                             {/*<div className="tab-content mt-3">*/}
-                                <div className="dialog-container">
-                                    {tabs.map((tab) => (
-                                        <Tab.Content key={tab.id}>
-                                            {activeKey === tab.id && (
-                                                <div className="dialog-content">
-                                                    <Dialog
-                                                        props={{
-                                                            ...dialogStates[tab.id],
-                                                            updateDialogState: (updatedState) =>
-                                                                this.updateDialogState(tab.id, updatedState),
-                                                        }}
-                                                    />
-                                                </div>
-                                            )}
-                                        </Tab.Content>
-                                    ))}
-                                </div>
+                            <div className="dialog-container">
+                                {tabs.map((tab) => (
+                                    <Tab.Content key={tab.id}>
+                                        {activeKey === tab.id && (
+                                            <div className="dialog-content">
+                                                <Dialog
+                                                    props={{
+                                                        ...dialogStates[tab.id],
+                                                        updateDialogState: (updatedState) =>
+                                                            this.updateDialogState(tab.id, updatedState),
+                                                    }}
+                                                />
+                                            </div>
+                                        )}
+                                    </Tab.Content>
+                                ))}
+                            </div>
                             {/*</div>*/}
                         </div>
                     </Split>
