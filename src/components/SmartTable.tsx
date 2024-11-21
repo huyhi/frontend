@@ -360,6 +360,7 @@ function MultiSelectTokensColumnFilter({
         options = [...new Set(dataSources)].sort();
     } else if (id === 'Keyword'&&dataKeywords){
         options = [...new Set(dataKeywords)].sort();
+        console.log("options",options)
     }
     else {
         options = React.useMemo(() => {
@@ -454,7 +455,7 @@ function MultiSelectTokensColumnFilter({
 }
 
 function MultiSelectColumnFilter({
-                                     column: {filterValue, setFilter, preFilteredRows, id, metadata}, dataAuthors, dataSources,dataKeywords
+                                     column: {filterValue, setFilter, preFilteredRows, id}, dataAuthors, dataSources,dataKeywords
                                  }) {
     // Calculate the options for filtering
     // using the preFilteredRows
@@ -948,6 +949,10 @@ function Table({
             })
         }
     )
+    // console.log("Rows:", rows);
+    if (!Array.isArray(rows)) {
+        console.error("Rows are not generated correctly:", rows);
+    }
 
     const isColumn = (id) => {
         return ["save", "add", "delete", "info", "locate"].indexOf(id) === -1
@@ -991,20 +996,20 @@ function Table({
         updateGlobalFilterValue(globalFilter);
     }, [globalFilter]);
 
-    React.useEffect(() => {
-        // Apply filters only to currently loaded data
-        const filteredData = data.filter(row => {
-            return filters.every(filter => {
-                // Example: Customize this to match your filter logic
-                const columnValue = row[filter.id];
-                if (Array.isArray(filter.value)) {
-                    return filter.value.includes(columnValue);
-                }
-                return columnValue === filter.value;
-            });
-        });
-        setFilteredPapers(filteredData);
-    }, [filters, data]); // Depend only on filters and current data
+    // React.useEffect(() => {
+    //     // Apply filters only to currently loaded data
+    //     const filteredData = data.filter(row => {
+    //         return filters.every(filter => {
+    //             // Example: Customize this to match your filter logic
+    //             const columnValue = row[filter.id];
+    //             if (Array.isArray(filter.value)) {
+    //                 return filter.value.includes(columnValue);
+    //             }
+    //             return columnValue === filter.value;
+    //         });
+    //     });
+    //     setFilteredPapers(filteredData);
+    // }, [filters, data]); // Depend only on filters and current data
 
     // Reference to the VariableSizeList element
     const listRef: any = React.useRef(null);
@@ -1477,7 +1482,6 @@ export interface SmartTableProps {
         author: any[],
         source: any[],
         year: any[],
-        metaData?: Record<string, any>  // Add this to define metaData
     };
     dataFiltered: any[];
     tableType: string;
@@ -1505,7 +1509,7 @@ export const SmartTable: React.FC<{
     props: SmartTableProps
 }> = observer(({props}) => {
     let {
-        tableData, dataFiltered= [], tableType, tableControls, columnIds, isInSimilarInputPapers,
+        tableData, dataFiltered=[], tableType, tableControls, columnIds, isInSimilarInputPapers,
         isInSavedPapers, addToSimilarInputPapers, addToSavedPapers, deleteRow, columnWidths,
         columnFilterTypes, updateVisibleColumns, columnsVisible, updateColumnFilterValues,
         columnFilterValues, setFilteredPapers, updateColumnSortByValues, columnSortByValues,
@@ -1530,15 +1534,24 @@ export const SmartTable: React.FC<{
         if (minCitationCountRef.current !== undefined) setMinCitationCount(minCitationCountRef.current);
         if (maxCitationCountRef.current !== undefined) setMaxCitationCount(maxCitationCountRef.current);
     }, []);
-    console.log("minYear:", minYear, "maxYear:", maxYear);
-    console.log("minCitationCount:", minCitationCount, "maxCitationCount:", maxCitationCount);
-    console.log("dataFiltered",dataFiltered);
+    // console.log("minYear:", minYear, "maxYear:", maxYear);
+    // console.log("minCitationCount:", minCitationCount, "maxCitationCount:", maxCitationCount);
 
     const [filteredLocalData, setFilteredLocalData] = useState([]);
-
-    const data =tableData[tableType];
+    // console.log("tableType:",tableType);
+    if (tableType === "all") {
+        console.log("dataFiltered", dataFiltered);
+    }
+    const data = tableType === "all" ? dataFiltered : tableData[tableType];
+    console.log("Data for table:", data);
+    if (!Array.isArray(data)) {
+        console.error("Data is not an array or is undefined:", data);
+    }
 
     const columns = React.useMemo(() => columnIds.map((c) => {
+        // console.log("Column ID:", c);
+        // console.log("Column Widths:", columnWidths[c]);
+        // console.log("Column Filter Type:", columnFilterTypes[c]);
         const columnHeader = {Header: c, accessor: c};
         const columnWidth = columnWidths[c];
         // console.log('columnFilterTypes passed dataSources',dataSources);
@@ -1554,7 +1567,6 @@ export const SmartTable: React.FC<{
             staticMaxCitationCounts
         );
 
-        const columnMeta = tableData?.metaData ? tableData.metaData[c] : '';
         // let columnMeta = {metadata: ''}
         // if (tableData['metaData'] === undefined) {
         //   columnMeta = {metadata: ''}
@@ -1562,19 +1574,18 @@ export const SmartTable: React.FC<{
         //   columnMeta = {metadata: tableData['metaData'][c]}
         // }
 
-        console.log('outer metadata', {columnMeta})
 
-        return { ...columnHeader, ...columnWidth, ...columnFilter, metadata: columnMeta };
+        return { ...columnHeader, ...columnWidth, ...columnFilter };
     }), [
         columnIds,
         columnWidths,
         columnFilterTypes,
-        tableData.metaData,
         staticMinYear,
         staticMaxYear,
         staticMinCitationCounts,
         staticMaxCitationCounts
     ]);
+    console.log("Columns:", columns);
 
     // We need to keep the table from resetting the pageIndex when we
     // Update data. So we can keep track of that flag with a ref.

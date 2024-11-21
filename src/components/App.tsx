@@ -171,6 +171,7 @@ interface AppState {
     chatSelectedPaper: string;
     offset: number;
     hasMoreData: boolean;
+    dataLoaded: boolean;
 }
 
 interface TabType {
@@ -206,6 +207,7 @@ class App extends React.Component<{}, AppState> {
     constructor(props: any) {
         super(props);
         this.state = {
+            dataLoaded: false,
             minYear: null,
             maxYear: null,
             minCitationCounts: null,
@@ -446,7 +448,7 @@ class App extends React.Component<{}, AppState> {
                     spinner: false,
                     loadingText: 'Loading Meta Data...',// Check if more data is available
                 }));
-                console.log('dataFiltered after loadmore',this.state.dataFiltered);
+                console.log('dataFiltered after loadmore', this.state.dataFiltered);
             } catch (error) {
                 console.error("Error loading more data:", error);
                 this.setState({spinner: false});
@@ -509,13 +511,17 @@ class App extends React.Component<{}, AppState> {
 
                 const allData = await response.json();
 
-                this.setState({
+                this.setState((prevState) => ({
                     dataAll: allData,
                     offset: allData.length,
                     hasMoreData: false,
                     spinner: false,
                     loadingText: 'Loading...',// All data loaded, so no more data to load
-                });
+                    dataFiltered: {
+                        ...prevState.dataFiltered,
+                        all: allData, // Directly assign `allData` to `dataFiltered.all` when loadAll is triggered
+                    },
+                }));
 
             } catch (error) {
                 console.error("Error loading all data:", error);
@@ -531,62 +537,80 @@ class App extends React.Component<{}, AppState> {
         console.log("Column Filters:", columnFilters);
         console.log("Global Filter:", globalFilter);
 
-        // Check if no filters are applied
         if (!columnFilters || columnFilters.length === 0) {
-            // console.log("No column filters applied, returning all data.");
-            return data;
+            return data; // No filters applied, return all data
         }
 
+
         const filteredData = data.filter((row) => {
-            // console.log("Processing Row:", row);
-
-
             // Apply column filters
             const columnFilterPass = columnFilters.every((filter) => {
-                // console.log("Processing id:", filter.id);
-                const columnValue = row[filter.id];
-                // console.log(`Filter: ${filter.id} = ${filter.value}, Row Value: ${columnValue}`);
-                if (filter.id === "Year" || filter.id === "CitationCount") {
-                    const [min, max] = filter.value;
-                    return columnValue >= min && columnValue <= max;
+                const { id, value } = filter;
+
+
+                // Skip null filters
+                if (!id || value === undefined || value === null) {
+                    return true; // Skip invalid filters
                 }
-                if (columnValue === undefined) {
-                    // console.error(`Column "${filter.id}" does not exist in the row:`, row);
-                    return false; // Skip rows missing the column
+                const columnValue = row[id];
+                if (columnValue === null) {
+                    return false; // Exclude rows with null array values
+                }
+                // if (columnValue === null || columnValue === undefined) {
+                //     return false; // Exclude rows with null/undefined values for this column
+                // }
+
+
+                // Exact match filters (e.g., Keywords, Authors)
+                if (Array.isArray(columnValue)) {
+                    if (columnValue === null) {
+                        return false; // Exclude rows with null array values
+                    }
+                    // Handle array fields like `Authors` or `Keywords`
+                    if (Array.isArray(value)) {
+                        // Match if any filter value exists in the column's array
+                        return value.some((filterVal) => columnValue.includes(filterVal));
+                    }
+                    return columnValue.includes(value); // Single value match
+                }else if (typeof columnValue === 'string') {
+                    // Handle string fields like `Title`, `Source`, and `Abstract`
+                    if (Array.isArray(value)) {
+                        // Match if any filter value exists in the string (case-insensitive)
+                        return value.some((filterVal) =>
+                            columnValue.toLowerCase() === filterVal.toLowerCase() // Exact match
+                        );
+                    }
+                    if (typeof value === 'string') {
+                        // Match if the string contains the filter value (case-insensitive)
+                        return columnValue.toLowerCase().includes(value.toLowerCase());
+                    }
+                    return false;
+                } else if (typeof columnValue === 'number') {
+                    // Handle numeric fields like `Year` and `CitationCounts`
+                    if (Array.isArray(value) && value.length === 2) {
+                        const [min, max] = value;
+                        return columnValue >= min && columnValue <= max; // Range match
+                    }
+                    return columnValue === value; // Exact match
                 }
 
-                // Handle array fields like Authors
-                if (Array.isArray(columnValue) && Array.isArray(filter.value)) {
-                    return columnValue.some((val) => filter.value.includes(val));
-                }
-
-                // Handle scalar fields with array-based filters (e.g., exact matches)
-                if (Array.isArray(filter.value)) {
-                    return filter.value.includes(columnValue);
-                }
-
-                // Handle range-based filters (e.g., Year or CitationCount)
-
-
-                // Case-insensitive comparison for scalar values
-                return String(columnValue).toLowerCase() === String(filter.value).toLowerCase();
+                return true;
             });
 
-            // Apply global filter, if any
+            // Apply global filter
             const globalFilterPass = globalFilter
                 ? Object.values(row).some((value) =>
                     String(value).toLowerCase().includes(globalFilter.toLowerCase())
                 )
                 : true;
 
-            console.log(`Row Passed Filters: ${columnFilterPass && globalFilterPass}`);
             return columnFilterPass && globalFilterPass;
         });
 
         console.log("Filtered Data Length:", filteredData.length);
-        console.log("Filtered Data:", filteredData);
         return filteredData;
     };
+
 
     addNewTab = () => {
         const newId = (this.state.tabs.length + 1).toString(); // Generate new ID
@@ -671,10 +695,16 @@ class App extends React.Component<{}, AppState> {
             parent.updateStateProp("paperNoEmbeddings", _paperNoEmbeddings["glove"], "glove");
             parent.updateStateProp("paperNoEmbeddings", _paperNoEmbeddings["specter"], "specter");
             parent.updateStateProp("paperNoEmbeddings", _paperNoEmbeddings["ada"], "ada");
-            parent.setState({
-                "dataAll": _dataAll,
-                "spinner": false
-            });
+            console.log('dataAll:', _dataAll);
+            parent.setState((prevState) => ({
+                dataAll: _dataAll,
+                spinner: false,
+                dataFiltered: {
+                    ...prevState.dataFiltered, // Retain existing keys in dataFiltered, if any
+                    all: _dataAll, // Update or set the "all" key
+                },
+                dataLoaded: true
+            }));
         });
     }
 
@@ -765,6 +795,7 @@ class App extends React.Component<{}, AppState> {
             this.getUmapPoints(); // Load UMAP points data
         } catch (error) {
             console.error("Error loading initial data:", error);
+            this.setState({ dataLoaded: false });
         }
     };
 
@@ -783,6 +814,7 @@ class App extends React.Component<{}, AppState> {
     public render() {
 
 
+        const { dataLoaded } = this.state;
         const toggleIsCiteUsCalloutVisible = () => {
             this.setState({
                 isCiteUsCalloutVisible: !this.state.isCiteUsCalloutVisible
@@ -1080,7 +1112,6 @@ class App extends React.Component<{}, AppState> {
                 author: this.state.dataAuthors,
                 source: this.state.dataSources,
                 year: this.state.dataYears,
-                metaData: this.state.metaData
             },
             columnsVisible: this.state.columnsVisible["year"],
             updateVisibleColumns: (columnId) => {
@@ -1121,7 +1152,6 @@ class App extends React.Component<{}, AppState> {
                 author: this.state.dataAuthors,
                 source: this.state.dataSources,
                 year: this.state.dataYears,
-                metaData: this.state.metaData
             },
             columnsVisible: this.state.columnsVisible["source"],
             updateVisibleColumns: (columnId) => {
@@ -1162,7 +1192,6 @@ class App extends React.Component<{}, AppState> {
                 author: this.state.dataAuthors,
                 source: this.state.dataSources,
                 year: this.state.dataYears,
-                metaData: this.state.metaData
             },
             columnsVisible: this.state.columnsVisible["author"],
             updateVisibleColumns: (columnId) => {
@@ -1203,7 +1232,6 @@ class App extends React.Component<{}, AppState> {
                 author: this.state.dataAuthors,
                 source: this.state.dataSources,
                 year: this.state.dataYears,
-                metaData: this.state.metaData
             },
             columnsVisible: this.state.columnsVisible["keyword"],
             updateVisibleColumns: (columnId) => {
@@ -1305,7 +1333,6 @@ class App extends React.Component<{}, AppState> {
                 author: this.state.dataAuthors,
                 source: this.state.dataSources,
                 year: this.state.dataYears,
-                metaData: this.state.metaData
             },
             columnsVisible: this.state.columnsVisible["all"],
             updateVisibleColumns: (columnId) => {
@@ -1325,7 +1352,7 @@ class App extends React.Component<{}, AppState> {
                 this.updateStateProp("columnFilterValues", filter, "all");
                 // Apply filters locally to existing data
                 const filteredData = this.applyLocalFilters(this.state.dataAll, filter);
-                console.log("filteredData",filteredData);
+                console.log("filteredData", filteredData);
                 this.setState((prevState) => ({
                     dataFiltered: {
                         ...prevState.dataFiltered,
@@ -1342,7 +1369,7 @@ class App extends React.Component<{}, AppState> {
 
                 // Apply global filter locally to existing data
                 const filteredData = this.applyLocalFilters(this.state.dataAll, this.state.columnFilterValues["all"], filter);
-                console.log("filteredData",filteredData);
+                console.log("filteredData", filteredData);
                 this.setState((prevState) => ({
                     dataFiltered: {
                         ...prevState.dataFiltered,
@@ -1353,18 +1380,18 @@ class App extends React.Component<{}, AppState> {
                 // Call the update methods to ensure metadata is updated
                 // Update filtered paper IDs
                 const filteredIDs = filteredData.map((paper) => paper.ID);
-                console.log("filteredIds",filteredIDs);
-                this.setState({ dataFilteredID: filteredIDs });
+                console.log("filteredIds", filteredIDs);
+                this.setState({dataFilteredID: filteredIDs});
             },
             columnFilterTypes: this.state.columnFilterTypes,
 
             setFilteredPapers: (dataFiltered) => {
-                updateKeywordCounts(dataFiltered);
-                updateAuthorCounts(dataFiltered);
-                updateSourcesCounts(dataFiltered);
-                updateYearsCounts(dataFiltered);
-                updateFilteredPaperIDs(dataFiltered);
-                this.updateStateProp("dataFiltered", dataFiltered, "all");
+                // updateKeywordCounts(dataFiltered);
+                // updateAuthorCounts(dataFiltered);
+                // updateSourcesCounts(dataFiltered);
+                // updateYearsCounts(dataFiltered);
+                // updateFilteredPaperIDs(dataFiltered);
+                // this.updateStateProp("dataFiltered", dataFiltered, "all");
             },
             scrollToPaperID: this.state.scrollToPaperID,
             dataFiltered: this.state.dataFiltered["all"],
@@ -1385,7 +1412,7 @@ class App extends React.Component<{}, AppState> {
             staticMaxYear: this.state.maxYear,
             staticMinCitationCounts: this.state.minCitationCounts,   // Pass minYear to SmartTable
             staticMaxCitationCounts: this.state.maxCitationCounts,
-            applyLocalFilters:this.applyLocalFilters,
+            applyLocalFilters: this.applyLocalFilters,
         }
 
 
@@ -1422,7 +1449,6 @@ class App extends React.Component<{}, AppState> {
                 author: this.state.dataAuthors,
                 source: this.state.dataSources,
                 year: this.state.dataYears,
-                metaData: this.state.metaData
             },
             columnsVisible: this.state.columnsVisible["saved"],
             updateVisibleColumns: (columnId) => {
@@ -1462,7 +1488,6 @@ class App extends React.Component<{}, AppState> {
             openGScholar: openGScholar,
             isInSelectedNodeIDs: isInSelectedNodeIDs,
         }
-
 
 
         const onChangeSearchTitle = (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newText: string): void => {
@@ -1579,7 +1604,6 @@ class App extends React.Component<{}, AppState> {
                 author: this.state.dataAuthors,
                 source: this.state.dataSources,
                 year: this.state.dataYears,
-                metaData: this.state.metaData
             },
             columnsVisible: this.state.columnsVisible["similar"],
             updateVisibleColumns: (columnId) => {
@@ -1627,7 +1651,6 @@ class App extends React.Component<{}, AppState> {
                 author: this.state.dataAuthors,
                 source: this.state.dataSources,
                 year: this.state.dataYears,
-                metaData: this.state.metaData
             },
             columnsVisible: this.state.columnsVisible["similarPayload"],
             updateVisibleColumns: (columnId) => {
@@ -1812,7 +1835,7 @@ class App extends React.Component<{}, AppState> {
         }
 
         const {metadataInitialized, spinner, loadingText} = this.state;
-        if (!metadataInitialized) {
+        if (!metadataInitialized||!dataLoaded) {
             return (
                 <LoadingOverlay
                     active={spinner}
