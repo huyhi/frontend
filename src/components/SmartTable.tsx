@@ -347,18 +347,18 @@ function NumberRangeColumnFilter({
 }
 
 function MultiSelectTokensColumnFilter({
-                                           column: {setFilter, preFilteredRows, id, filterValue},dataAuthors, dataSources,dataKeywords
+                                           column: {setFilter, preFilteredRows, id, filterValue},dataAuthors, dataSources,dataKeywords,setSpinner
                                        }) {
     // Calculate the options for filtering
     // using the preFilteredRows
     let options = [];
-    if (id === 'Author' && dataAuthors) {
+    if (id === 'Authors' && dataAuthors) {
         // Use the passed set of authors
         options = [...new Set(dataAuthors)].sort();
     } else if (id === 'Source' && dataSources) {
         // Use the passed set of sources
         options = [...new Set(dataSources)].sort();
-    } else if (id === 'Keyword'&&dataKeywords){
+    } else if (id === 'Keywords'&&dataKeywords){
         options = [...new Set(dataKeywords)].sort();
         console.log("options",options)
     }
@@ -383,6 +383,7 @@ function MultiSelectTokensColumnFilter({
     const [multiselectTokenSelectedOptions, setMultiSelectTokenSelectedOptions]: any = React.useState([]);
 
     const onChange = (_selOpts): void => {
+        setSpinner(true, "Applying Filters...");
         let filteredValues = [];
         preFilteredRows.forEach(row => {
             if ("values" in row && id in row["values"] && row["values"][id] != null) {
@@ -455,19 +456,24 @@ function MultiSelectTokensColumnFilter({
 }
 
 function MultiSelectColumnFilter({
-                                     column: {filterValue, setFilter, preFilteredRows, id}, dataAuthors, dataSources,dataKeywords
+                                     column: {filterValue, setFilter, preFilteredRows, id}, dataAuthors, dataSources,dataKeywords, setSpinner
                                  }) {
     // Calculate the options for filtering
     // using the preFilteredRows
+    console.log("dataAuthors in MultiSelectColumnFilter:", dataAuthors);
+    console.log("dataKeywords in MultiSelectColumnFilter:", dataKeywords);
+    console.log("id",id);
+    console.log("filterValue",filterValue);
+    console.log("setFilter",setFilter);
     let options = [];
     // console.log('inner metadata', metadata)
-    if (id === 'Author' && dataAuthors) {
+    if (id === 'Authors' && dataAuthors) {
         // Use the passed set of authors
         options = [...new Set(dataAuthors)].sort();
     } else if (id === 'Source' && dataSources) {
         // Use the passed set of sources
         options = [...new Set(dataSources)].sort();
-    } else if (id==='Keyword'&& dataKeywords){
+    } else if (id==='Keywords'&& dataKeywords){
         options = [...new Set(dataKeywords)].sort();
     }
     else {
@@ -489,7 +495,8 @@ function MultiSelectColumnFilter({
     }, [options]);
     const [multiselectTokenSelectedOptions, setMultiSelectTokenSelectedOptions] = React.useState<any[]>([]);
     const onChange = (selectedOptions): void => {
-        // TODO Call /getPaper
+        console.log("setSpinner");
+        setSpinner(true, "Applying Filters...");
         const filteredValues = preFilteredRows
             .filter(row => {
                 const rowValues = Array.isArray(row.values[id]) ? row.values[id] : [row.values[id]];
@@ -551,9 +558,18 @@ function DefaultColumnFilter({
         />)
 }
 
-function filterMapping(filter, dataAuthors, dataSources, dataKeywords, columnId, staticMinYear = 1975, staticMaxYear = 2024, staticMinCitationCounts = 0, staticMaxCitationCounts = 1000) {
+function filterMapping(filter, dataAuthors, dataSources, dataKeywords,setSpinner, columnId, staticMinYear = 1975, staticMaxYear = 2024, staticMinCitationCounts = 0, staticMaxCitationCounts = 1000) {
     if (filter === "multiselect") {
-        return { Filter: (props) => <MultiSelectColumnFilter {...props} dataAuthors={dataAuthors} dataSources={dataSources} dataKeywords={dataKeywords} />, filter: 'includesValue' };
+        console.log("Passing dataAuthors to MultiSelectColumnFilter:", dataAuthors);
+        console.log("Passing dataKeywords to MultiSelectColumnFilter:", dataKeywords);
+        return { Filter: (props) => (<MultiSelectColumnFilter
+                {...props}
+                dataAuthors={dataAuthors}
+                dataSources={dataSources}
+                dataKeywords={dataKeywords}
+                setSpinner={setSpinner}
+            />),
+            filter: 'includesValue' };
     } else if (filter === "default") {
         return { Filter: DefaultColumnFilter, filter: 'fuzzyText' };
     } else if (filter === "range") {
@@ -572,7 +588,7 @@ function filterMapping(filter, dataAuthors, dataSources, dataKeywords, columnId,
             filter: 'between',
         };
     } else if (filter === "multiselect-tokens") {
-        return { Filter: (props) => <MultiSelectTokensColumnFilter {...props} dataAuthors={dataAuthors} dataSources={dataSources} dataKeywords={dataKeywords} />, filter: 'includesValue' };
+        return { Filter: (props) => <MultiSelectTokensColumnFilter {...props} dataAuthors={dataAuthors} dataSources={dataSources} dataKeywords={dataKeywords} setSpinner={setSpinner} />, filter: 'includesValue' };
     }
 }
 
@@ -621,7 +637,8 @@ function Table({
                    loadAllData,
                    dataAuthors,
                    dataSources,
-                   dataKeywords
+                   dataKeywords,
+                   setSpinner,
                }) {
 
     const [isLoading, setIsLoading] = useState(false);
@@ -988,6 +1005,7 @@ function Table({
 
     React.useEffect(() => {
         // `sortBy` changed
+        // setSpinner(true, "Updating Filters...");
         updateColumnSortByValues(sortBy);
     }, [sortBy]);
 
@@ -1506,8 +1524,9 @@ export interface SmartTableProps {
 }
 
 export const SmartTable: React.FC<{
-    props: SmartTableProps
-}> = observer(({props}) => {
+    props: SmartTableProps;
+    setSpinner: (isSpinnerActive: boolean, loadingText?: string) => void;
+}> = observer(({props,setSpinner}) => {
     let {
         tableData, dataFiltered=[], tableType, tableControls, columnIds, isInSimilarInputPapers,
         isInSavedPapers, addToSimilarInputPapers, addToSavedPapers, deleteRow, columnWidths,
@@ -1541,6 +1560,8 @@ export const SmartTable: React.FC<{
     // console.log("tableType:",tableType);
     if (tableType === "all") {
         console.log("dataFiltered", dataFiltered);
+        console.log("SmartTable dataAuthors received:", dataAuthors);
+        console.log("SmartTable dataKeywords received:", dataKeywords);
     }
     const data = tableType === "all" ? dataFiltered : tableData[tableType];
     console.log("Data for table:", data);
@@ -1560,6 +1581,7 @@ export const SmartTable: React.FC<{
             dataAuthors,
             dataSources,
             dataKeywords,
+            setSpinner,
             c,  // Pass column ID here
             staticMinYear,
             staticMaxYear,
@@ -1619,54 +1641,54 @@ export const SmartTable: React.FC<{
     The requirement is to compare these papers as much as possible, summarizing the similarities, differences, and connections between them.`);
 
     // @ts-ignore
-    return (
-        <Styles>
-            <Table
-                tableType={tableType}
-                embeddingType={embeddingType}
-                hasEmbeddings={hasEmbeddings}
-                scrollToPaperID={scrollToPaperID}
-                paperInfo={paperInfo}
-                setPaperInfo={setPaperInfo}
-                summarizeBtnShow={summarizeBtnShow}
-                setSummarizeBtnShow={setSummarizeBtnShow}
-                literatureReviewBtnShow={literatureReviewBtnShow}
-                setLiteratureReviewBtnShow={setLiteratureReviewBtnShow}
-                summarizePrompt={summarizePrompt}
-                setSummarizePrompt={setSummarizePrompt}
-                literatureReviewPrompt={literatureReviewPrompt}
-                setLiteratureReviewPrompt={setLiteratureReviewPrompt}
-                columns={columns}
-                data={data}
-                tableControls={tableControls}
-                tableData={tableData}
-                addToSelectNodeIDs={addToSelectNodeIDs}
-                addToSimilarInputPapers={addToSimilarInputPapers}
-                addToSavedPapers={addToSavedPapers}
-                deleteRow={deleteRow}
-                isInSimilarInputPapers={isInSimilarInputPapers}
-                isInSavedPapers={isInSavedPapers}
-                isInSelectedNodeIDs={isInSelectedNodeIDs}
-                skipReset={skipResetRef.current}
-                initialState={initialState}
-                updateVisibleColumns={updateVisibleColumns}
-                updateColumnFilterValues={updateColumnFilterValues}
-                updateColumnSortByValues={updateColumnSortByValues}
-                updateGlobalFilterValue={updateGlobalFilterValue}
-                setFilteredPapers={setFilteredPapers}
-                dataFiltered={dataFiltered}
-                checkoutPapers={checkoutPapers}
-                summarizePapers={summarizePapers}
-                literatureReviewPapers={literatureReviewPapers}
-                openGScholar={openGScholar}
-                loadMoreData={loadMoreData}
-                hasMoreData={hasMoreData}
-                loadAllData={loadAllData}
-                dataAuthors={dataAuthors}  // Pass dataAuthors to Table
-                dataSources={dataSources}  // Pass dataSources to Table
-                dataKeywords={dataKeywords}></Table>
-        </Styles>
-    )
+    let styles = <Styles>
+        <Table
+    tableType={tableType}
+    embeddingType={embeddingType}
+    hasEmbeddings={hasEmbeddings}
+    scrollToPaperID={scrollToPaperID}
+    paperInfo={paperInfo}
+    setPaperInfo={setPaperInfo}
+    summarizeBtnShow={summarizeBtnShow}
+    setSummarizeBtnShow={setSummarizeBtnShow}
+    literatureReviewBtnShow={literatureReviewBtnShow}
+    setLiteratureReviewBtnShow={setLiteratureReviewBtnShow}
+    summarizePrompt={summarizePrompt}
+    setSummarizePrompt={setSummarizePrompt}
+    literatureReviewPrompt={literatureReviewPrompt}
+    setLiteratureReviewPrompt={setLiteratureReviewPrompt}
+    columns={columns}
+    data={data}
+    tableControls={tableControls}
+    tableData={tableData}
+    addToSelectNodeIDs={addToSelectNodeIDs}
+    addToSimilarInputPapers={addToSimilarInputPapers}
+    addToSavedPapers={addToSavedPapers}
+    deleteRow={deleteRow}
+    isInSimilarInputPapers={isInSimilarInputPapers}
+    isInSavedPapers={isInSavedPapers}
+    isInSelectedNodeIDs={isInSelectedNodeIDs}
+    skipReset={skipResetRef.current}
+    initialState={initialState}
+    updateVisibleColumns={updateVisibleColumns}
+    updateColumnFilterValues={updateColumnFilterValues}
+    updateColumnSortByValues={updateColumnSortByValues}
+    updateGlobalFilterValue={updateGlobalFilterValue}
+    setFilteredPapers={setFilteredPapers}
+    dataFiltered={dataFiltered}
+    checkoutPapers={checkoutPapers}
+    summarizePapers={summarizePapers}
+    literatureReviewPapers={literatureReviewPapers}
+    openGScholar={openGScholar}
+    loadMoreData={loadMoreData}
+    hasMoreData={hasMoreData}
+    loadAllData={loadAllData}
+    dataAuthors={dataAuthors}  // Pass dataAuthors to Table
+    dataSources={dataSources}  // Pass dataSources to Table
+    dataKeywords={dataKeywords}
+    setSpinner={setSpinner}/>
+    </Styles>;
+    return styles
 });
 
 export default SmartTable

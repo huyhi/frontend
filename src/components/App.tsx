@@ -533,15 +533,9 @@ class App extends React.Component<{}, AppState> {
     };
 
     applyLocalFilters = (data, columnFilters, globalFilter = null) => {
-        console.log("Applying local filters:");
-        console.log("Column Filters:", columnFilters);
-        console.log("Global Filter:", globalFilter);
-
         if (!columnFilters || columnFilters.length === 0) {
             return data; // No filters applied, return all data
         }
-
-
         const filteredData = data.filter((row) => {
             // Apply column filters
             const columnFilterPass = columnFilters.every((filter) => {
@@ -606,8 +600,6 @@ class App extends React.Component<{}, AppState> {
 
             return columnFilterPass && globalFilterPass;
         });
-
-        console.log("Filtered Data Length:", filteredData.length);
         return filteredData;
     };
 
@@ -1344,15 +1336,20 @@ class App extends React.Component<{}, AppState> {
             },
             columnFilterValues: this.state.columnFilterValues["all"],
             updateColumnFilterValues: (filter) => {
+                this.setState({spinner: true, loadingText: 'Loading Data...'});
                 if (JSON.stringify(this.state.columnFilterValues["all"]) === JSON.stringify(filter)) {
+                    setTimeout(() => {
+                        this.setState({ spinner: false, loadingText: 'Loading Meta Data...' });
+                    }, 500); // Delay of 500ms
                     return;
                 }
                 console.log("Updating column filter values:", filter);
                 // Update column filter values without resetting data or calling loadMoreData
                 this.updateStateProp("columnFilterValues", filter, "all");
+
                 // Apply filters locally to existing data
                 const filteredData = this.applyLocalFilters(this.state.dataAll, filter);
-                console.log("filteredData", filteredData);
+                // console.log("filteredData", filteredData);
                 this.setState((prevState) => ({
                     dataFiltered: {
                         ...prevState.dataFiltered,
@@ -1360,10 +1357,14 @@ class App extends React.Component<{}, AppState> {
                     },
                     dataFilteredID: filteredData.map((paper) => paper.ID),
                 }));
+                setTimeout(() => {
+                    this.setState({ spinner: false, loadingText: 'Loading Meta Data...' });
+                }, 100); // Delay of 500ms
+                return;
             },
             globalFilterValue: this.state.globalFilterValue["all"],
             updateGlobalFilterValue: (filter) => {
-                console.log("Updating global filter value:", filter);
+                this.setState({spinner: true, loadingText: 'Loading Data...'});
                 // Update global filter value without resetting data or calling loadMoreData
                 this.updateStateProp("globalFilterValue", filter, "all");
 
@@ -1376,12 +1377,15 @@ class App extends React.Component<{}, AppState> {
                         all: filteredData,
                     },
                 }));
-
                 // Call the update methods to ensure metadata is updated
                 // Update filtered paper IDs
                 const filteredIDs = filteredData.map((paper) => paper.ID);
                 console.log("filteredIds", filteredIDs);
                 this.setState({dataFilteredID: filteredIDs});
+                setTimeout(() => {
+                    this.setState({ spinner: false, loadingText: 'Loading Meta Data...' });
+                }, 100); // Delay of 500ms
+                return;
             },
             columnFilterTypes: this.state.columnFilterTypes,
 
@@ -1835,6 +1839,14 @@ class App extends React.Component<{}, AppState> {
         }
 
         const {metadataInitialized, spinner, loadingText} = this.state;
+
+        const setSpinner = (isSpinnerActive: boolean, loadingText?: string) => {
+            console.log('Spinner state updated:', isSpinnerActive, loadingText);
+            this.setState((prevState) => ({
+                spinner: isSpinnerActive,
+                loadingText: loadingText,// Check if more data is available
+            }));
+        };
         if (!metadataInitialized||!dataLoaded) {
             return (
                 <LoadingOverlay
@@ -1889,12 +1901,12 @@ class App extends React.Component<{}, AppState> {
                     >
                         <br/>
                         <a ref={this.state.checkoutLinkRef}></a>
-                        <SmartTable props={savedPapersTableProps}></SmartTable>
+                        <SmartTable props={savedPapersTableProps} setSpinner={setSpinner}></SmartTable>
                         <div style={{fontSize: '1.25em', lineHeight: '1.25em'}}>
                             <Markdown>{this.state.summarizeResponse}</Markdown></div>
                     </Panel>
                     <div className="m-t-md p-md">
-                        <SmartTable props={allPapersTableProps}></SmartTable>
+                        <SmartTable props={allPapersTableProps} setSpinner={setSpinner}></SmartTable>
                     </div>
                     <Split
                         sizes={[33, 39, 28]}
@@ -1951,7 +1963,7 @@ class App extends React.Component<{}, AppState> {
                                             </Stack>
                                         </React.Fragment>
                                         <div className="m-t-md"></div>
-                                        <SmartTable props={similarPapersPayloadTableProps}></SmartTable>
+                                        <SmartTable props={similarPapersPayloadTableProps} setSpinner={setSpinner}></SmartTable>
                                     </PivotItem>
                                     <PivotItem onRenderItemLink={_inputButtonRenderer} headerText="By Abstract">
                                         <div className="m-t-lg"></div>
@@ -1984,7 +1996,7 @@ class App extends React.Component<{}, AppState> {
                                     <PivotItem onRenderItemLink={_outputButtonRenderer} headerText={"Output Similar"}
                                                itemCount={this.state.dataSimilar.length}>
                                         <div className="m-t-lg"></div>
-                                        <SmartTable props={similarPapersTableProps}></SmartTable>
+                                        <SmartTable props={similarPapersTableProps} setSpinner={setSpinner}></SmartTable>
                                     </PivotItem>
                                 </Pivot>
                             </div>
