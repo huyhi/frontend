@@ -172,6 +172,7 @@ interface AppState {
     offset: number;
     hasMoreData: boolean;
     dataLoaded: boolean;
+    allDataLoaded:boolean;
 }
 
 interface TabType {
@@ -201,6 +202,22 @@ const maxSimilarPapersDropdownOptions = [
     {key: '250', text: '250'},
     {key: '-1', text: 'All'},
 ];
+const areQueryConditionsUndefined = (queryPayload) => {
+    const { title, author, source, keyword, min_year, max_year, abstract, min_citation_counts, max_citation_counts } = queryPayload;
+
+    return (
+        title === undefined &&
+        (!author || author.length === 0) &&
+        (!source || source.length === 0) &&
+        (!keyword || keyword.length === 0) &&
+        min_year === undefined &&
+        max_year === undefined &&
+        abstract === undefined &&
+        min_citation_counts === undefined &&
+        max_citation_counts === undefined
+    );
+};
+
 
 class App extends React.Component<{}, AppState> {
 
@@ -356,8 +373,10 @@ class App extends React.Component<{}, AppState> {
             },
             offset: 0,
             hasMoreData: true,
+            allDataLoaded: false,
         }
     }
+
 
     loadMoreData = async () => {
         const {
@@ -383,11 +402,18 @@ class App extends React.Component<{}, AppState> {
                 const citationFilter = columnFilterValues["all"].find(f => f.id === 'CitationCounts');
                 console.log('citationFilter', citationFilter);
                 // console.log('yearFilter',yearFilter)
-                const minYear = yearFilter ? yearFilter.value[0] : undefined;
+                let minYear = yearFilter ? yearFilter.value[0] : undefined;
                 // console.log('minYear',minYear)
-                const maxYear = yearFilter ? yearFilter.value[1] : undefined;
-                const minCitationCounts = citationFilter ? citationFilter.value[0] : undefined;
-                const maxCitationCounts = citationFilter ? citationFilter.value[1] : undefined;
+                let maxYear = yearFilter ? yearFilter.value[1] : undefined;
+                // Reset to undefined if minYear is 1974 or maxYear is 2023
+                minYear = minYear === 1974 ? undefined : minYear;
+                maxYear = maxYear === 2023 ? undefined : maxYear;
+                let minCitationCounts = citationFilter ? citationFilter.value[0] : undefined;
+                let maxCitationCounts = citationFilter ? citationFilter.value[1] : undefined;
+                // Reset to undefined if minCitationCounts is 1 or maxCitationCounts is 1611
+                minCitationCounts = minCitationCounts === 0 ? undefined : minCitationCounts;
+                maxCitationCounts = maxCitationCounts === 1611 ? undefined : maxCitationCounts;
+
                 const searchText = columnFilterValues["all"]
                     .filter(f => f.id === 'Title') // Filter for entries with id 'Title'
                     .map(f => f.value) // Extract the value for each entry
@@ -419,7 +445,7 @@ class App extends React.Component<{}, AppState> {
                     max_citation_counts: maxCitationCounts || undefined,
                     id_list: idList || undefined,
                 };
-                console.log('Query Payload:', queryPayload);
+                console.log('Query Payload loadMore:', queryPayload);
                 const response = await fetch(`${baseUrl}getPapers`, {
                     method: 'POST',
                     headers: {
@@ -434,14 +460,13 @@ class App extends React.Component<{}, AppState> {
                 const uniqueData = Array.from(new Set(combinedData.map(item => item.ID))).map(
                     id => combinedData.find(item => item.ID === id)
                 );
+                console.log('unique_data',uniqueData);
 
                 this.setState((prevState) => ({
                     dataAll: uniqueData,
                     dataFiltered: {
                         ...prevState.dataFiltered,
-                        all: prevState.columnFilterValues["all"].length
-                            ? prevState.dataFiltered.all // Retain existing filtered data if filters exist
-                            : uniqueData, // Sync with dataAll if no filters are applied
+                        all: uniqueData // Sync with dataAll if no filters are applied
                     },
                     offset: prevState.offset + limit,
                     hasMoreData: newData.length === limit,
@@ -474,11 +499,18 @@ class App extends React.Component<{}, AppState> {
                 const keyword = columnFilterValues["all"]
                     .find(f => f.id === 'Keywords')?.value?.flat() || [];
                 const yearFilter = columnFilterValues["all"].find(f => f.id === 'Year');
-                const minYear = yearFilter ? yearFilter.value[0] : undefined;
-                const maxYear = yearFilter ? yearFilter.value[1] : undefined;
+                let minYear = yearFilter ? yearFilter.value[0] : undefined;
+                // console.log('minYear',minYear)
+                let maxYear = yearFilter ? yearFilter.value[1] : undefined;
+                // Reset to undefined if minYear is 1974 or maxYear is 2023
+                minYear = minYear === 1974 ? undefined : minYear;
+                maxYear = maxYear === 2023 ? undefined : maxYear;
                 const citationFilter = columnFilterValues["all"].find(f => f.id === 'CitationCounts');
-                const minCitationCounts = citationFilter ? citationFilter.value[0] : undefined;
-                const maxCitationCounts = citationFilter ? citationFilter.value[1] : undefined;
+                let minCitationCounts = citationFilter ? citationFilter.value[0] : undefined;
+                let maxCitationCounts = citationFilter ? citationFilter.value[1] : undefined;
+                // Reset to undefined if minCitationCounts is 1 or maxCitationCounts is 1611
+                minCitationCounts = minCitationCounts === 0 ? undefined : minCitationCounts;
+                maxCitationCounts = maxCitationCounts === 1611 ? undefined : maxCitationCounts;
                 const searchText = columnFilterValues["all"]
                     .filter(f => f.id === 'Title')
                     .map(f => f.value)
@@ -500,6 +532,7 @@ class App extends React.Component<{}, AppState> {
                     min_citation_counts: minCitationCounts || undefined,
                     max_citation_counts: maxCitationCounts || undefined,
                 };
+                console.log("queryPayLoad loadALl",queryPayload);
 
                 const response = await fetch(`${baseUrl}getPapers`, {
                     method: 'POST',
@@ -521,6 +554,7 @@ class App extends React.Component<{}, AppState> {
                         ...prevState.dataFiltered,
                         all: allData, // Directly assign `allData` to `dataFiltered.all` when loadAll is triggered
                     },
+                    allDataLoaded: areQueryConditionsUndefined(queryPayload),
                 }));
 
             } catch (error) {
@@ -1336,56 +1370,89 @@ class App extends React.Component<{}, AppState> {
             },
             columnFilterValues: this.state.columnFilterValues["all"],
             updateColumnFilterValues: (filter) => {
+                const { allDataLoaded,columnFilterValues} = this.state;
                 this.setState({spinner: true, loadingText: 'Loading Data...'});
-                if (JSON.stringify(this.state.columnFilterValues["all"]) === JSON.stringify(filter)) {
+                if (JSON.stringify(columnFilterValues["all"]) === JSON.stringify(filter)) {
                     setTimeout(() => {
                         this.setState({ spinner: false, loadingText: 'Loading Meta Data...' });
-                    }, 500); // Delay of 500ms
+                    }, 10); // Delay of 500ms
                     return;
                 }
-                console.log("Updating column filter values:", filter);
-                // Update column filter values without resetting data or calling loadMoreData
-                this.updateStateProp("columnFilterValues", filter, "all");
+                if (!allDataLoaded) {
+                    this.setState(
+                        {
+                            dataAll: [],
+                            offset: 0,
+                            hasMoreData: true,
+                        },
+                        () => {
+                            this.loadMoreData(); // Load more data from the server
+                        }
+                    );
+                    // Update the column filter values
+                    this.updateStateProp("columnFilterValues", filter, "all");
+                } else {
+                    console.log("Updating column filter values:", filter);
+                    // Update column filter values without resetting data or calling loadMoreData
+                    this.updateStateProp("columnFilterValues", filter, "all");
 
-                // Apply filters locally to existing data
-                const filteredData = this.applyLocalFilters(this.state.dataAll, filter);
-                // console.log("filteredData", filteredData);
-                this.setState((prevState) => ({
-                    dataFiltered: {
-                        ...prevState.dataFiltered,
-                        all: filteredData,
-                    },
-                    dataFilteredID: filteredData.map((paper) => paper.ID),
-                }));
-                setTimeout(() => {
-                    this.setState({ spinner: false, loadingText: 'Loading Meta Data...' });
-                }, 100); // Delay of 500ms
-                return;
+                    // Apply filters locally to existing data
+                    const filteredData = this.applyLocalFilters(this.state.dataAll, filter);
+                    // console.log("filteredData", filteredData);
+                    this.setState((prevState) => ({
+                        dataFiltered: {
+                            ...prevState.dataFiltered,
+                            all: filteredData,
+                        },
+                        dataFilteredID: filteredData.map((paper) => paper.ID),
+                    }));
+                    setTimeout(() => {
+                        this.setState({spinner: false, loadingText: 'Loading Meta Data...'});
+                    }, 10); // Delay of 500ms
+                }
             },
             globalFilterValue: this.state.globalFilterValue["all"],
             updateGlobalFilterValue: (filter) => {
+                const { allDataLoaded,columnFilterValues} = this.state;
                 this.setState({spinner: true, loadingText: 'Loading Data...'});
-                // Update global filter value without resetting data or calling loadMoreData
-                this.updateStateProp("globalFilterValue", filter, "all");
+                if (JSON.stringify(columnFilterValues["all"]) === JSON.stringify(filter)) {
+                    setTimeout(() => {
+                        this.setState({ spinner: false, loadingText: 'Loading Meta Data...' });
+                    }, 10); // Delay of 500ms
+                    return;
+                }
+                if (!allDataLoaded) {
+                    this.setState(
+                        {
+                            dataAll: [],
+                            offset: 0,
+                            hasMoreData: true,
+                        },
+                        () => {
+                            this.loadMoreData(); // Load more data from the server
+                        }
+                    );
+                    // Update the column filter values
+                    this.updateStateProp("columnFilterValues", filter, "all");
+                } else {
+                    console.log("Updating column filter values:", filter);
+                    // Update column filter values without resetting data or calling loadMoreData
+                    this.updateStateProp("columnFilterValues", filter, "all");
 
-                // Apply global filter locally to existing data
-                const filteredData = this.applyLocalFilters(this.state.dataAll, this.state.columnFilterValues["all"], filter);
-                console.log("filteredData", filteredData);
-                this.setState((prevState) => ({
-                    dataFiltered: {
-                        ...prevState.dataFiltered,
-                        all: filteredData,
-                    },
-                }));
-                // Call the update methods to ensure metadata is updated
-                // Update filtered paper IDs
-                const filteredIDs = filteredData.map((paper) => paper.ID);
-                console.log("filteredIds", filteredIDs);
-                this.setState({dataFilteredID: filteredIDs});
-                setTimeout(() => {
-                    this.setState({ spinner: false, loadingText: 'Loading Meta Data...' });
-                }, 100); // Delay of 500ms
-                return;
+                    // Apply filters locally to existing data
+                    const filteredData = this.applyLocalFilters(this.state.dataAll, filter);
+                    // console.log("filteredData", filteredData);
+                    this.setState((prevState) => ({
+                        dataFiltered: {
+                            ...prevState.dataFiltered,
+                            all: filteredData,
+                        },
+                        dataFilteredID: filteredData.map((paper) => paper.ID),
+                    }));
+                    setTimeout(() => {
+                        this.setState({spinner: false, loadingText: 'Loading Meta Data...'});
+                    }, 10); // Delay of 500ms
+                }
             },
             columnFilterTypes: this.state.columnFilterTypes,
 
