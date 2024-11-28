@@ -1,5 +1,5 @@
 /* eslint no-console: 0 */
-import "./../assets/scss/SmartTable.scss";
+import "./../assets/scss/MetaTable.scss";
 import * as React from "react";
 import {VariableSizeList} from 'react-window';
 import * as JsSearch from 'js-search';
@@ -218,7 +218,8 @@ const EditableCell = ({
     } catch (e) {
     }
 
-    if (["KeywordCount", "AuthorCount", "YearCount", "SourceCount"].indexOf(id) !== -1) {
+    if (["KeywordCount", "AuthorCount", "YearCount", "SourceCount","Count"].indexOf(id) !== -1) {
+        console.log("barCalculating");
         const val = initialValue / metaMax[id];
         const color = metaColorScale[id](initialValue);
 
@@ -304,6 +305,7 @@ function NumberRangeColumnFilter({
     const [value, setValue] = useState(filterValue?.length ? filterValue : range);
 
     React.useEffect(() => {
+        console.log("trigger filterValue update ")
         if (filterValue && filterValue.length > 0) {
             setValue(filterValue);
         }
@@ -382,46 +384,37 @@ function MultiSelectTokensColumnFilter({
 
     const [multiselectTokenSelectedOptions, setMultiSelectTokenSelectedOptions]: any = React.useState([]);
 
-    const onChange = (_selOpts): void => {
-        let filteredValues = [];
-        preFilteredRows.forEach(row => {
-            if ("values" in row && id in row["values"] && row["values"][id] != null) {
-                if (row.values[id].some(r => _selOpts.some(o => o.value === r))) {
-                    filteredValues.push(row.values[id]);
-                }
-            }
-        });
-        const selectedValues = _selOpts.map(opt => opt.value);
-        console.log("Selected OptionsInToken:", _selOpts); // Log selected options
-        console.log("Filtered Values before SetInToken:", filteredValues); // Log values before uniqueness
-        filteredValues = [...new Set(filteredValues)];
-        console.log("Filtered Values after SetInToken:", filteredValues); // Log unique filtered values
+    const onChange = (selectedOptions): void => {
+        const selectedValues = selectedOptions.map(option => option.value);
 
-        setMultiSelectTokenSelectedOptions(_selOpts);
-        setFilter(selectedValues.length > 0 ? selectedValues : undefined);
-        // setFilter(filteredValues.length > 0 ? filteredValues : undefined);
+        if (JSON.stringify(selectedValues) !== JSON.stringify(filterValue)) {
+            setMultiSelectTokenSelectedOptions(selectedOptions);
+            setFilter(selectedValues.length > 0 ? selectedValues : undefined);
+        }
     }
 
     React.useEffect(() => {
-        if (filterValue) {
-            if (!Array.isArray(filterValue)) {
-                let _selOptions = [];
-                _selOptions.push({label: filterValue, value: filterValue});
+        console.log("trigger longer preFilterRows filterValue update");
+        if (filterValue && !Array.isArray(filterValue)) {
+            const _selOptions = [{ label: filterValue, value: filterValue }];
+            if (JSON.stringify(_selOptions) !== JSON.stringify(multiselectTokenSelectedOptions)) {
                 setMultiSelectTokenSelectedOptions(_selOptions);
-
-                let filteredValues = [];
-                preFilteredRows.forEach(row => {
-                    if ("values" in row && id in row["values"] && row["values"][id] != null) {
-                        if (row.values[id].some(r => filterValue == r)) {
-                            filteredValues.push(row.values[id]);
-                        }
-                    }
-                });
-                console.log('filteredValues:',filteredValues);
-                setFilter(filteredValues.length > 0 ? filteredValues : undefined);
             }
+
+            const filteredValues = preFilteredRows
+                .filter(row =>
+                    "values" in row &&
+                    id in row["values"] &&
+                    row["values"][id] != null &&
+                    row.values[id].some(r => filterValue == r)
+                )
+                .map(row => row.values[id]);
+
+            console.log('filteredValues:', filteredValues);
+            setFilter(filteredValues.length > 0 ? filteredValues : undefined);
         }
-    }, [filterValue]);
+    }, [filterValue, preFilteredRows, id, multiselectTokenSelectedOptions]);
+
 
     // Create Options
     const _options = React.useMemo(() => {
@@ -489,7 +482,6 @@ function MultiSelectColumnFilter({
     }, [options]);
     const [multiselectTokenSelectedOptions, setMultiSelectTokenSelectedOptions] = React.useState<any[]>([]);
     const onChange = (selectedOptions): void => {
-        // TODO Call /getPaper
         const filteredValues = preFilteredRows
             .filter(row => {
                 const rowValues = Array.isArray(row.values[id]) ? row.values[id] : [row.values[id]];
@@ -508,6 +500,8 @@ function MultiSelectColumnFilter({
     }
 
     React.useEffect(() => {
+        console.log('trigger filter value update on setMultiSelectTokenSelectedOptions');
+        console.log('filterValue',filterValue);
         if (filterValue) {
             const _selOptions = Array.isArray(filterValue) ? filterValue.map(f => ({label: f, value: f})) : [];
             setMultiSelectTokenSelectedOptions(_selOptions);
@@ -982,17 +976,23 @@ function Table({
     };
 
     React.useEffect(() => {
-        // `filters` changed
+        console.log('updateColumnFilterValues(filters); Triggered');
+        console.log('filters:',filters)
         updateColumnFilterValues(filters);
+
     }, [filters]);
 
     React.useEffect(() => {
         // `sortBy` changed
+        console.log('updateColumnSortByValues(sortBy); Triggered');
+        console.log(sortBy);
         updateColumnSortByValues(sortBy);
+
     }, [sortBy]);
 
     React.useEffect(() => {
         // `globalFilter` changed
+        console.log('updateGlobalFilterValue(globalFilter); Triggered')
         updateGlobalFilterValue(globalFilter);
     }, [globalFilter]);
 
@@ -1015,6 +1015,7 @@ function Table({
     const listRef: any = React.useRef(null);
 
     React.useEffect(() => {
+        console.log('trigger scrollToPaperID update')
         if (listRef.current && scrollToPaperID != null && scrollToPaperID != undefined) {
             // Then call the scrollToItem() API method with an item index:
             let idx = 0;
@@ -1043,6 +1044,9 @@ function Table({
         })),
         SourceCount: Math.max.apply(Math, data.map(function (o) {
             return o["SourceCount"];
+        })),
+        Count: Math.max.apply(Math, data.map(function (o) {
+            return o["Count"];
         }))
     }
 
@@ -1051,6 +1055,7 @@ function Table({
         AuthorCount: d3.scaleLinear().domain([0, metaMax["AuthorCount"]]).range(["white", "#aaaaaa"] as any),
         YearCount: d3.scaleLinear().domain([0, metaMax["YearCount"]]).range(["white", "#aaaaaa"] as any),
         SourceCount: d3.scaleLinear().domain([0, metaMax["SourceCount"]]).range(["white", "#aaaaaa"] as any),
+        Count: d3.scaleLinear().domain([0, metaMax["Count"]]).range(["white", "#aaaaaa"] as any),
         Sim: d3.scaleLinear().domain([0, 1]).range(["white", "#ff7f00"] as any),
     }
 
@@ -1448,7 +1453,7 @@ function Table({
     )
 }
 
-export interface SmartTableProps {
+export interface MetaTableProps {
     // State
     staticMinYear?: number;  // Optional properties for min and max years
     staticMaxYear?: number;
@@ -1503,10 +1508,14 @@ export interface SmartTableProps {
     dataSources?: any[];
     dataKeywords?: any[];
     applyLocalFilters?: Function;
+    authorsSummary?: Array<{ _id: string; count: number }>;
+    sourcesSummary?: Array<{ _id: string; count: number }>;
+    keywordsSummary?: Array<{ _id: string; count: number }>;
+    yearsSummary?: Array<{ _id: number; count: number }>;
 }
 
-export const SmartTable: React.FC<{
-    props: SmartTableProps
+export const MetaTable: React.FC<{
+    props: MetaTableProps
 }> = observer(({props}) => {
     let {
         tableData, dataFiltered=[], tableType, tableControls, columnIds, isInSimilarInputPapers,
@@ -1528,21 +1537,24 @@ export const SmartTable: React.FC<{
     const [minCitationCount, setMinCitationCount] = useState(minCitationCountRef.current ?? null);
     const [maxCitationCount, setMaxCitationCount] = useState(maxCitationCountRef.current ?? null);
 
-    useEffect(() => {
-        if (minYearRef.current !== undefined) setMinYear(minYearRef.current);
-        if (maxYearRef.current !== undefined) setMaxYear(maxYearRef.current);
-        if (minCitationCountRef.current !== undefined) setMinCitationCount(minCitationCountRef.current);
-        if (maxCitationCountRef.current !== undefined) setMaxCitationCount(maxCitationCountRef.current);
-    }, []);
+    if (minYearRef.current !== undefined) setMinYear(minYearRef.current);
+    if (maxYearRef.current !== undefined) setMaxYear(maxYearRef.current);
+    if (minCitationCountRef.current !== undefined) setMinCitationCount(minCitationCountRef.current);
+    if (maxCitationCountRef.current !== undefined) setMaxCitationCount(maxCitationCountRef.current);
+
     // console.log("minYear:", minYear, "maxYear:", maxYear);
     // console.log("minCitationCount:", minCitationCount, "maxCitationCount:", maxCitationCount);
 
     const [filteredLocalData, setFilteredLocalData] = useState([]);
     // console.log("tableType:",tableType);
-    if (tableType === "all") {
-        console.log("dataFiltered", dataFiltered);
+    console.log(tableData.all);
+    const isMetadata = tableType === "keyword" && Array.isArray(tableData.all) && tableData.all[0]?.Keyword;
+    let data;
+    if(isMetadata){
+        data = tableData.all;
+    }else{
+        data = tableType === "all" ? dataFiltered : tableData[tableType];
     }
-    const data = tableType === "all" ? dataFiltered : tableData[tableType];
     console.log("Data for table:", data);
     if (!Array.isArray(data)) {
         console.error("Data is not an array or is undefined:", data);
@@ -1567,12 +1579,7 @@ export const SmartTable: React.FC<{
             staticMaxCitationCounts
         );
 
-        // let columnMeta = {metadata: ''}
-        // if (tableData['metaData'] === undefined) {
-        //   columnMeta = {metadata: ''}
-        // } else {
-        //   columnMeta = {metadata: tableData['metaData'][c]}
-        // }
+        console.log("Columns for Table:", columns);
 
 
         return { ...columnHeader, ...columnWidth, ...columnFilter };
@@ -1595,12 +1602,13 @@ export const SmartTable: React.FC<{
     // so that if data actually changes when we're not
     // editing it, the page is reset
     React.useEffect(() => {
+        console.log('trgger data update')
         skipResetRef.current = false
     }, [data]);
 
     const initialState: any = {
         hiddenColumns: columnIds.filter(x => !columnsVisible.includes(x)),
-        sortBy: columnSortByValues,
+        sortBy: columnSortByValues?columnSortByValues:[],
         filters: columnFilterValues,
         globalFilter: globalFilterValue,
     };
@@ -1669,4 +1677,6 @@ export const SmartTable: React.FC<{
     )
 });
 
-export default SmartTable
+
+export default MetaTable
+
