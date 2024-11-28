@@ -1302,7 +1302,10 @@ class App extends React.Component<{}, AppState> {
             updateGlobalFilterValue: (filter) => {
                 this.updateStateProp("globalFilterValue", filter, "keyword");
             },
-            columnFilterTypes: this.state.columnFilterTypes,
+            columnFilterTypes: {
+                Keyword: "multiselect",
+                Count: "range", // Specify that Count uses the range filter
+            },
             setFilteredPapers: (dataFiltered) => {
                 this.updateStateProp("dataFiltered", dataFiltered, "keyword");
             },

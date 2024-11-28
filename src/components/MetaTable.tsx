@@ -545,15 +545,31 @@ function DefaultColumnFilter({
         />)
 }
 
-function filterMapping(filter, dataAuthors, dataSources, dataKeywords, columnId, staticMinYear = 1975, staticMaxYear = 2024, staticMinCitationCounts = 0, staticMaxCitationCounts = 1000) {
+function filterMapping(filter, dataAuthors, dataSources, dataKeywords, columnId, staticMinYear = 1975, staticMaxYear = 2024, staticMinCitationCounts = 0, staticMaxCitationCounts = 1000,columnData) {
     if (filter === "multiselect") {
         return { Filter: (props) => <MultiSelectColumnFilter {...props} dataAuthors={dataAuthors} dataSources={dataSources} dataKeywords={dataKeywords} />, filter: 'includesValue' };
     } else if (filter === "default") {
         return { Filter: DefaultColumnFilter, filter: 'fuzzyText' };
     } else if (filter === "range") {
+        let min, max;
+        if (columnId === "Count") {
+            // Dynamically calculate min and max from the data
+            min = Math.min(...columnData);
+            max = Math.max(...columnData);
+        }return {
+            Filter: (props) => (
+                <NumberRangeColumnFilter
+                    {...props}
+                    id={columnId}
+                    min={min ?? undefined}
+                    max={max ?? undefined}
+                />
+            ),
+            filter: "between",
+        };
         // Check if the column is Year or CitationCount to apply specific ranges
-        const min = columnId === 'Year' ? staticMinYear : columnId === 'CitationCount' ? staticMinCitationCounts : undefined;
-        const max = columnId === 'Year' ? staticMaxYear : columnId === 'CitationCount' ? staticMaxCitationCounts : undefined;
+        min = columnId === 'Year' ? staticMinYear : columnId === 'CitationCount' ? staticMinCitationCounts : undefined;
+        max = columnId === 'Year' ? staticMaxYear : columnId === 'CitationCount' ? staticMaxCitationCounts : undefined;
         return {
             Filter: (props) => (
                 <NumberRangeColumnFilter
@@ -1223,9 +1239,8 @@ function Table({
                 <div>
                     <div className="tr">
                         <div className="th">
-                            {/*<Text variant="mediumPlus">Showing&nbsp;<b>{rows.length}/{data.length}</b>*/}
+                            <Text variant="mediumPlus">Showing&nbsp;<b>{rows.length}/{data.length}</b>
                             {/*hard coding for speed*/}
-                            <Text variant="mediumPlus">Showing&nbsp;<b>{rows.length}/66692</b>
                             </Text>
                             &nbsp;&nbsp;
                             <div style={{float: "right"}}>
@@ -1566,6 +1581,7 @@ export const MetaTable: React.FC<{
         // console.log("Column Filter Type:", columnFilterTypes[c]);
         const columnHeader = {Header: c, accessor: c};
         const columnWidth = columnWidths[c];
+        const columnData = tableData.all.map(row => row[c]);
         // console.log('columnFilterTypes passed dataSources',dataSources);
         const columnFilter = filterMapping(
             columnFilterTypes[c],
@@ -1576,7 +1592,8 @@ export const MetaTable: React.FC<{
             staticMinYear,
             staticMaxYear,
             staticMinCitationCounts,
-            staticMaxCitationCounts
+            staticMaxCitationCounts,
+            columnData
         );
 
         console.log("Columns for Table:", columns);
