@@ -70,7 +70,6 @@ import visConferenceLogo from './../assets/img/ieeevis2021-logo.png';
 import {Dialog} from "./Dialog";
 import {MetaTable} from "./MetaTable";
 
-
 export const baseUrl = "http://localhost:3000/";
 
 initializeIcons();
@@ -178,6 +177,7 @@ interface AppState {
     offset: number;
     hasMoreData: boolean;
     dataLoaded: boolean;
+    allDataLoaded:boolean;
 }
 
 interface TabType {
@@ -207,6 +207,22 @@ const maxSimilarPapersDropdownOptions = [
     {key: '250', text: '250'},
     {key: '-1', text: 'All'},
 ];
+const areQueryConditionsUndefined = (queryPayload) => {
+    const { title, author, source, keyword, min_year, max_year, abstract, min_citation_counts, max_citation_counts } = queryPayload;
+
+    return (
+        title === undefined &&
+        (!author || author.length === 0) &&
+        (!source || source.length === 0) &&
+        (!keyword || keyword.length === 0) &&
+        min_year === undefined &&
+        max_year === undefined &&
+        abstract === undefined &&
+        min_citation_counts === undefined &&
+        max_citation_counts === undefined
+    );
+};
+
 
 const preprocessMetadata = (metadata, keyColumn = "Keyword", valueColumn = "Count") => {
     if (!metadata) return [];
@@ -374,9 +390,9 @@ class App extends React.Component<{}, AppState> {
             },
             offset: 0,
             hasMoreData: true,
+            allDataLoaded: false,
         }
     }
-
     loadMoreData = async () => {
         const {
             offset,
@@ -401,11 +417,18 @@ class App extends React.Component<{}, AppState> {
                 const citationFilter = columnFilterValues["all"].find(f => f.id === 'CitationCounts');
                 console.log('citationFilter', citationFilter);
                 // console.log('yearFilter',yearFilter)
-                const minYear = yearFilter ? yearFilter.value[0] : undefined;
+                let minYear = yearFilter ? yearFilter.value[0] : undefined;
                 // console.log('minYear',minYear)
-                const maxYear = yearFilter ? yearFilter.value[1] : undefined;
-                const minCitationCounts = citationFilter ? citationFilter.value[0] : undefined;
-                const maxCitationCounts = citationFilter ? citationFilter.value[1] : undefined;
+                let maxYear = yearFilter ? yearFilter.value[1] : undefined;
+                // Reset to undefined if minYear is 1974 or maxYear is 2023
+                minYear = minYear === 1974 ? undefined : minYear;
+                maxYear = maxYear === 2023 ? undefined : maxYear;
+                let minCitationCounts = citationFilter ? citationFilter.value[0] : undefined;
+                let maxCitationCounts = citationFilter ? citationFilter.value[1] : undefined;
+                // Reset to undefined if minCitationCounts is 1 or maxCitationCounts is 1611
+                minCitationCounts = minCitationCounts === 0 ? undefined : minCitationCounts;
+                maxCitationCounts = maxCitationCounts === 1611 ? undefined : maxCitationCounts;
+
                 const searchText = columnFilterValues["all"]
                     .filter(f => f.id === 'Title') // Filter for entries with id 'Title'
                     .map(f => f.value) // Extract the value for each entry
@@ -437,7 +460,7 @@ class App extends React.Component<{}, AppState> {
                     max_citation_counts: maxCitationCounts || undefined,
                     id_list: idList || undefined,
                 };
-                console.log('Query Payload:', queryPayload);
+                console.log('Query Payload loadMore:', queryPayload);
                 const response = await fetch(`${baseUrl}getPapers`, {
                     method: 'POST',
                     headers: {
@@ -452,14 +475,11 @@ class App extends React.Component<{}, AppState> {
                 const uniqueData = Array.from(new Set(combinedData.map(item => item.ID))).map(
                     id => combinedData.find(item => item.ID === id)
                 );
-
                 this.setState((prevState) => ({
                     dataAll: uniqueData,
                     dataFiltered: {
                         ...prevState.dataFiltered,
-                        all: prevState.columnFilterValues["all"].length
-                            ? prevState.dataFiltered.all // Retain existing filtered data if filters exist
-                            : uniqueData, // Sync with dataAll if no filters are applied
+                        all: uniqueData // Sync with dataAll if no filters are applied
                     },
                     offset: prevState.offset + limit,
                     hasMoreData: newData.length === limit,
@@ -469,9 +489,10 @@ class App extends React.Component<{}, AppState> {
                 console.log('dataFiltered after loadmore', this.state.dataFiltered);
             } catch (error) {
                 console.error("Error loading more data:", error);
-                this.setState({spinner: false});
-                this.setState({loadingText: 'Loading...'});
+                this.setState({ spinner: false });
+                this.setState({ loadingText: 'Loading...' });
             }
+
         }
     };
     loadAllData = async () => {
@@ -492,11 +513,18 @@ class App extends React.Component<{}, AppState> {
                 const keyword = columnFilterValues["all"]
                     .find(f => f.id === 'Keywords')?.value?.flat() || [];
                 const yearFilter = columnFilterValues["all"].find(f => f.id === 'Year');
-                const minYear = yearFilter ? yearFilter.value[0] : undefined;
-                const maxYear = yearFilter ? yearFilter.value[1] : undefined;
+                let minYear = yearFilter ? yearFilter.value[0] : undefined;
+                // console.log('minYear',minYear)
+                let maxYear = yearFilter ? yearFilter.value[1] : undefined;
+                // Reset to undefined if minYear is 1974 or maxYear is 2023
+                minYear = minYear === 1974 ? undefined : minYear;
+                maxYear = maxYear === 2023 ? undefined : maxYear;
                 const citationFilter = columnFilterValues["all"].find(f => f.id === 'CitationCounts');
-                const minCitationCounts = citationFilter ? citationFilter.value[0] : undefined;
-                const maxCitationCounts = citationFilter ? citationFilter.value[1] : undefined;
+                let minCitationCounts = citationFilter ? citationFilter.value[0] : undefined;
+                let maxCitationCounts = citationFilter ? citationFilter.value[1] : undefined;
+                // Reset to undefined if minCitationCounts is 1 or maxCitationCounts is 1611
+                minCitationCounts = minCitationCounts === 0 ? undefined : minCitationCounts;
+                maxCitationCounts = maxCitationCounts === 1611 ? undefined : maxCitationCounts;
                 const searchText = columnFilterValues["all"]
                     .filter(f => f.id === 'Title')
                     .map(f => f.value)
@@ -518,6 +546,7 @@ class App extends React.Component<{}, AppState> {
                     min_citation_counts: minCitationCounts || undefined,
                     max_citation_counts: maxCitationCounts || undefined,
                 };
+                console.log("queryPayLoad loadALl",queryPayload);
 
                 const response = await fetch(`${baseUrl}getPapers`, {
                     method: 'POST',
@@ -539,6 +568,7 @@ class App extends React.Component<{}, AppState> {
                         ...prevState.dataFiltered,
                         all: allData, // Directly assign `allData` to `dataFiltered.all` when loadAll is triggered
                     },
+                    allDataLoaded: areQueryConditionsUndefined(queryPayload),
                 }));
 
             } catch (error) {
@@ -551,15 +581,9 @@ class App extends React.Component<{}, AppState> {
     };
 
     applyLocalFilters = (data, columnFilters, globalFilter = null) => {
-        console.log("Applying local filters:");
-        console.log("Column Filters:", columnFilters);
-        console.log("Global Filter:", globalFilter);
-
         if (!columnFilters || columnFilters.length === 0) {
             return data; // No filters applied, return all data
         }
-
-
         const filteredData = data.filter((row) => {
             // Apply column filters
             const columnFilterPass = columnFilters.every((filter) => {
@@ -624,8 +648,6 @@ class App extends React.Component<{}, AppState> {
 
             return columnFilterPass && globalFilterPass;
         });
-
-        console.log("Filtered Data Length:", filteredData.length);
         return filteredData;
     };
 
@@ -633,7 +655,7 @@ class App extends React.Component<{}, AppState> {
     addNewTab = () => {
         const newId = (this.state.tabs.length + 1).toString(); // Generate new ID
         this.setState((prevState) => ({
-            tabs: [...prevState.tabs, {id: newId, title: `Chat ${newId}`}],
+            tabs: [...prevState.tabs, { id: newId, title: `Chat ${newId}` }],
             activeKey: newId,
             dialogStates: {
                 ...prevState.dialogStates,
@@ -770,11 +792,10 @@ class App extends React.Component<{}, AppState> {
         if (this.state.metadataInitialized) return;
 
         this.setState({ spinner: true });
-
         try {
             const response = await fetch(baseUrl + 'getMetaData', {
                 method: 'GET',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {'Content-Type': 'application/json'},
             });
 
             if (!response.ok) {
@@ -1381,7 +1402,6 @@ class App extends React.Component<{}, AppState> {
             });
         }
 
-
         const allPapersTableProps: SmartTableProps = {
             loadMoreData: this.loadMoreData,
             loadAllData: this.loadAllData,
@@ -1398,6 +1418,7 @@ class App extends React.Component<{}, AppState> {
                 author: this.state.dataAuthors,
                 source: this.state.dataSources,
                 year: this.state.dataYears,
+                metaData: this.state.metaData
             },
             columnsVisible: this.state.columnsVisible["all"],
             updateVisibleColumns: (columnId) => {
@@ -1409,44 +1430,89 @@ class App extends React.Component<{}, AppState> {
             },
             columnFilterValues: this.state.columnFilterValues["all"],
             updateColumnFilterValues: (filter) => {
-                if (JSON.stringify(this.state.columnFilterValues["all"]) === JSON.stringify(filter)) {
+                const { allDataLoaded,columnFilterValues} = this.state;
+                this.setState({spinner: true, loadingText: 'Loading Data...'});
+                if (JSON.stringify(columnFilterValues["all"]) === JSON.stringify(filter)) {
+                    setTimeout(() => {
+                        this.setState({ spinner: false, loadingText: 'Loading Meta Data...' });
+                    }, 10); // Delay of 500ms
                     return;
                 }
-                console.log("Updating column filter values:", filter);
-                // Update column filter values without resetting data or calling loadMoreData
-                this.updateStateProp("columnFilterValues", filter, "all");
-                // Apply filters locally to existing data
-                const filteredData = this.applyLocalFilters(this.state.dataAll, filter);
-                console.log("filteredData", filteredData);
-                this.setState((prevState) => ({
-                    dataFiltered: {
-                        ...prevState.dataFiltered,
-                        all: filteredData,
-                    },
-                    dataFilteredID: filteredData.map((paper) => paper.ID),
-                }));
+                if (!allDataLoaded) {
+                    this.setState(
+                        {
+                            dataAll: [],
+                            offset: 0,
+                            hasMoreData: true,
+                        },
+                        () => {
+                            this.loadMoreData(); // Load more data from the server
+                        }
+                    );
+                    // Update the column filter values
+                    this.updateStateProp("columnFilterValues", filter, "all");
+                } else {
+                    console.log("Updating column filter values:", filter);
+                    // Update column filter values without resetting data or calling loadMoreData
+                    this.updateStateProp("columnFilterValues", filter, "all");
+
+                    // Apply filters locally to existing data
+                    const filteredData = this.applyLocalFilters(this.state.dataAll, filter);
+                    // console.log("filteredData", filteredData);
+                    this.setState((prevState) => ({
+                        dataFiltered: {
+                            ...prevState.dataFiltered,
+                            all: filteredData,
+                        },
+                        dataFilteredID: filteredData.map((paper) => paper.ID),
+                    }));
+                    setTimeout(() => {
+                        this.setState({spinner: false, loadingText: 'Loading Meta Data...'});
+                    }, 10); // Delay of 500ms
+                }
             },
             globalFilterValue: this.state.globalFilterValue["all"],
             updateGlobalFilterValue: (filter) => {
-                console.log("Updating global filter value:", filter);
-                // Update global filter value without resetting data or calling loadMoreData
-                this.updateStateProp("globalFilterValue", filter, "all");
+                const { allDataLoaded,columnFilterValues} = this.state;
+                this.setState({spinner: true, loadingText: 'Loading Data...'});
+                if (JSON.stringify(columnFilterValues["all"]) === JSON.stringify(filter)) {
+                    setTimeout(() => {
+                        this.setState({ spinner: false, loadingText: 'Loading Meta Data...' });
+                    }, 10); // Delay of 500ms
+                    return;
+                }
+                if (!allDataLoaded) {
+                    this.setState(
+                        {
+                            dataAll: [],
+                            offset: 0,
+                            hasMoreData: true,
+                        },
+                        () => {
+                            this.loadMoreData(); // Load more data from the server
+                        }
+                    );
+                    // Update the column filter values
+                    this.updateStateProp("columnFilterValues", filter, "all");
+                } else {
+                    console.log("Updating column filter values:", filter);
+                    // Update column filter values without resetting data or calling loadMoreData
+                    this.updateStateProp("columnFilterValues", filter, "all");
 
-                // Apply global filter locally to existing data
-                const filteredData = this.applyLocalFilters(this.state.dataAll, this.state.columnFilterValues["all"], filter);
-                console.log("filteredData", filteredData);
-                this.setState((prevState) => ({
-                    dataFiltered: {
-                        ...prevState.dataFiltered,
-                        all: filteredData,
-                    },
-                }));
-
-                // Call the update methods to ensure metadata is updated
-                // Update filtered paper IDs
-                const filteredIDs = filteredData.map((paper) => paper.ID);
-                console.log("filteredIds", filteredIDs);
-                this.setState({dataFilteredID: filteredIDs});
+                    // Apply filters locally to existing data
+                    const filteredData = this.applyLocalFilters(this.state.dataAll, filter);
+                    // console.log("filteredData", filteredData);
+                    this.setState((prevState) => ({
+                        dataFiltered: {
+                            ...prevState.dataFiltered,
+                            all: filteredData,
+                        },
+                        dataFilteredID: filteredData.map((paper) => paper.ID),
+                    }));
+                    setTimeout(() => {
+                        this.setState({spinner: false, loadingText: 'Loading Meta Data...'});
+                    }, 10); // Delay of 500ms
+                }
             },
             columnFilterTypes: this.state.columnFilterTypes,
 
@@ -1898,9 +1964,8 @@ class App extends React.Component<{}, AppState> {
                 </div>
             );
         }
-
-        const {metadataInitialized, spinner, loadingText} = this.state;
-        if (!metadataInitialized||!dataLoaded) {
+        const { metadataInitialized, spinner ,loadingText} = this.state;
+        if (!metadataInitialized) {
             return (
                 <LoadingOverlay
                     active={spinner}
@@ -1939,7 +2004,7 @@ class App extends React.Component<{}, AppState> {
                                 paddingBottom: 0,
                                 marginTop: -7,
                                 borderBottom: "1px solid #ededed",
-                                height: 60,
+                                height:60,
                                 display: 'flex',
                                 alignItems: 'center',
                             },
@@ -1954,12 +2019,12 @@ class App extends React.Component<{}, AppState> {
                     >
                         <br/>
                         <a ref={this.state.checkoutLinkRef}></a>
-                        <SmartTable props={savedPapersTableProps}></SmartTable>
+                        <SmartTable props={savedPapersTableProps} setSpinner={setSpinner}></SmartTable>
                         <div style={{fontSize: '1.25em', lineHeight: '1.25em'}}>
                             <Markdown>{this.state.summarizeResponse}</Markdown></div>
                     </Panel>
                     <div className="m-t-md p-md">
-                        <SmartTable props={allPapersTableProps}></SmartTable>
+                        <SmartTable props={allPapersTableProps} setSpinner={setSpinner}></SmartTable>
                     </div>
                     <Split
                         sizes={[33, 39, 28]}
@@ -2016,7 +2081,7 @@ class App extends React.Component<{}, AppState> {
                                             </Stack>
                                         </React.Fragment>
                                         <div className="m-t-md"></div>
-                                        <SmartTable props={similarPapersPayloadTableProps}></SmartTable>
+                                        <SmartTable props={similarPapersPayloadTableProps} setSpinner={setSpinner}></SmartTable>
                                     </PivotItem>
                                     <PivotItem onRenderItemLink={_inputButtonRenderer} headerText="By Abstract">
                                         <div className="m-t-lg"></div>
@@ -2049,7 +2114,7 @@ class App extends React.Component<{}, AppState> {
                                     <PivotItem onRenderItemLink={_outputButtonRenderer} headerText={"Output Similar"}
                                                itemCount={this.state.dataSimilar.length}>
                                         <div className="m-t-lg"></div>
-                                        <SmartTable props={similarPapersTableProps}></SmartTable>
+                                        <SmartTable props={similarPapersTableProps} setSpinner={setSpinner}></SmartTable>
                                     </PivotItem>
                                 </Pivot>
                             </div>
@@ -2121,11 +2186,7 @@ class App extends React.Component<{}, AppState> {
                                             onClick={() => this.removeTab(tab.id)}
                                             aria-label="Close tab"
                                         >
-                                            <FontAwesomeIcon icon={faTimes} style={{
-                                                color: "grey",
-                                                fontSize: "1rem",
-                                                marginLeft: '8px'
-                                            }}/>
+                                            <FontAwesomeIcon icon={faTimes} style={{ color: "grey", fontSize: "1rem", marginLeft: '8px' }} />
                                         </Button>
                                     </Nav.Item>
                                 ))}
@@ -2145,9 +2206,9 @@ class App extends React.Component<{}, AppState> {
                                             viewBox="0 0 24 24"
                                             className="add-icon"
                                         >
-                                            <circle cx="12" cy="12" r="10" stroke="gray" strokeWidth="1.5" fill="none"/>
-                                            <line x1="8" y1="12" x2="16" y2="12" stroke="gray" strokeWidth="1.5"/>
-                                            <line x1="12" y1="8" x2="12" y2="16" stroke="gray" strokeWidth="1.5"/>
+                                            <circle cx="12" cy="12" r="10" stroke="gray" strokeWidth="1.5" fill="none" />
+                                            <line x1="8" y1="12" x2="16" y2="12" stroke="gray" strokeWidth="1.5" />
+                                            <line x1="12" y1="8" x2="12" y2="16" stroke="gray" strokeWidth="1.5" />
                                         </svg>
                                     </Button>
                                 </Nav.Item>
