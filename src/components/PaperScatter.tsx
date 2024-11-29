@@ -33,6 +33,7 @@ interface AppProps {
     eventOrigin: string;
 }
 
+
 let scatterplot;
 let datapoints = [];
 let [xMin, xMax] = [{
@@ -55,7 +56,7 @@ let [yMin, yMax] = [{
 }]
 
 const hoverColor = "#bbdefb";
-const colorListTableTypes = ['#555555','#cccccc','#e31a1c','#ff5aac','#ff7f00'];
+const colorListTableTypes = ['#3a3737','#cccccc','#e31a1c','#ff5aac','#ff7f00'];
 const colorListCategoricalType = ['#a6cee3', '#222222','#e31a1c','#ff7f00','#1f78b4','#dddddd', '#b2df8a','#33a02c','#fb9a99','#fdbf6f','#cab2d6','#6a3d9a','#ffff99','#b15928'];
 const colorListNumericalType = ['#fc8d59', '#91cf60'];
 
@@ -72,6 +73,7 @@ let axisContainer, xAxisContainer, yAxisContainer;
 let xScale:any, yScale: any;
 let selectNodes = [];
 
+
 export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
     const {data, dataFiltered, dataSimilarPayload, dataSaved, dataSimilar, isInSimilarInputPapers, isInSimilarPapers, isInSavedPapers, addToSavedPapers, addToSimilarInputPapers, selectNodeIDs, addToSelectNodeIDs, isInFilteredPapers, setScrollToPaperID, embeddingType, openGScholar, eventOrigin} = props;
     const [hoverNode, setHoverNode] = React.useState(null);
@@ -81,6 +83,8 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
     const [colorByAttribute, setColorByAttribute] = React.useState<IDropdownOption>(colorByDropdownOptions[0]);
     const embeddingKey = embeddingType + "_umap";
     // const [selectedPaper, setSelectedPaper] = useState(null);
+    console.log('dataFiltered in paper Scatter',dataFiltered);
+    console.log('data in paper Scatter',data);
 
     React.useEffect(() => {
         papersToShow = [...data];
@@ -280,7 +284,7 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
             if(["Default"].indexOf(colorByAttribute.key as string) !== -1){
                 let colorByValue = null;
                 if(!isInFilteredPapers(papersToShow[i])){
-                    colorByValue = "Filtered";
+                    colorByValue = "UnFiltered";
                     if(!(colorByValue in colorByMap)){
                         colorByMap[colorByValue] = [colorValueIndex++, colorListTableTypes[1]];
                     }
@@ -300,7 +304,8 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
                         colorByMap[colorByValue] = [colorValueIndex++, colorListTableTypes[4]];
                     }
                 }else{
-                    colorByValue = "UnFiltered";
+                    colorByValue = "Filtered";
+                    console.log("data is in Filtered");
                     if(!(colorByValue in colorByMap)){
                         colorByMap[colorByValue] = [colorValueIndex++, colorListTableTypes[0]];
                     }

@@ -42,7 +42,7 @@ import {
     IconButton,
     IDropdownOption,
     IPivotItemProps,
-    Label,
+    Label,Modal,
     Panel,
     PanelType,
     Pivot,
@@ -177,6 +177,7 @@ interface AppState {
     offset: number;
     hasMoreData: boolean;
     dataLoaded: boolean;
+    isMetaTableModalOpen: boolean;
     allDataLoaded:boolean;
 }
 
@@ -231,6 +232,7 @@ const preprocessMetadata = (metadata, keyColumn = "Keyword", valueColumn = "Coun
         [valueColumn]: count, // Dynamically assign the valueColumn name
     }));
 };
+
 
 class App extends React.Component<{}, AppState> {
 
@@ -391,8 +393,21 @@ class App extends React.Component<{}, AppState> {
             offset: 0,
             hasMoreData: true,
             allDataLoaded: false,
+            isMetaTableModalOpen:false,
         }
+        this.setSpinner = this.setSpinner.bind(this);
     }
+    setSpinner(isSpinnerActive: boolean, loadingText: string = 'Loading...') {
+        this.setState({
+            spinner: isSpinnerActive,
+            loadingText: loadingText,
+        });
+    }
+    setMetaTableModalState = (isOpen: boolean) => {
+        this.setState({ isMetaTableModalOpen: isOpen });
+    };
+
+
     loadMoreData = async () => {
         const {
             offset,
@@ -475,12 +490,15 @@ class App extends React.Component<{}, AppState> {
                 const uniqueData = Array.from(new Set(combinedData.map(item => item.ID))).map(
                     id => combinedData.find(item => item.ID === id)
                 );
+                const dataFilteredIDs = uniqueData.map(item => item.ID); // Update dataFilteredID
+
                 this.setState((prevState) => ({
                     dataAll: uniqueData,
                     dataFiltered: {
                         ...prevState.dataFiltered,
                         all: uniqueData // Sync with dataAll if no filters are applied
                     },
+                    dataFilteredID: dataFilteredIDs,
                     offset: prevState.offset + limit,
                     hasMoreData: newData.length === limit,
                     spinner: false,
@@ -492,7 +510,6 @@ class App extends React.Component<{}, AppState> {
                 this.setState({ spinner: false });
                 this.setState({ loadingText: 'Loading...' });
             }
-
         }
     };
     loadAllData = async () => {
@@ -546,7 +563,6 @@ class App extends React.Component<{}, AppState> {
                     min_citation_counts: minCitationCounts || undefined,
                     max_citation_counts: maxCitationCounts || undefined,
                 };
-                console.log("queryPayLoad loadALl",queryPayload);
 
                 const response = await fetch(`${baseUrl}getPapers`, {
                     method: 'POST',
@@ -557,6 +573,7 @@ class App extends React.Component<{}, AppState> {
                 });
 
                 const allData = await response.json();
+                const dataFilteredIDs = allData.map(item => item.ID); // Update dataFilteredID
 
                 this.setState((prevState) => ({
                     dataAll: allData,
@@ -568,6 +585,7 @@ class App extends React.Component<{}, AppState> {
                         ...prevState.dataFiltered,
                         all: allData, // Directly assign `allData` to `dataFiltered.all` when loadAll is triggered
                     },
+                    dataFilteredID: dataFilteredIDs,
                     allDataLoaded: areQueryConditionsUndefined(queryPayload),
                 }));
 
@@ -584,6 +602,8 @@ class App extends React.Component<{}, AppState> {
         if (!columnFilters || columnFilters.length === 0) {
             return data; // No filters applied, return all data
         }
+
+
         const filteredData = data.filter((row) => {
             // Apply column filters
             const columnFilterPass = columnFilters.every((filter) => {
@@ -655,7 +675,7 @@ class App extends React.Component<{}, AppState> {
     addNewTab = () => {
         const newId = (this.state.tabs.length + 1).toString(); // Generate new ID
         this.setState((prevState) => ({
-            tabs: [...prevState.tabs, { id: newId, title: `Chat ${newId}` }],
+            tabs: [...prevState.tabs, {id: newId, title: `Chat ${newId}`}],
             activeKey: newId,
             dialogStates: {
                 ...prevState.dialogStates,
@@ -736,6 +756,7 @@ class App extends React.Component<{}, AppState> {
             parent.updateStateProp("paperNoEmbeddings", _paperNoEmbeddings["specter"], "specter");
             parent.updateStateProp("paperNoEmbeddings", _paperNoEmbeddings["ada"], "ada");
             console.log('dataAll:', _dataAll);
+            const filteredIDs = _dataAll.map((paper) => paper.ID);
             parent.setState((prevState) => ({
                 dataAll: _dataAll,
                 spinner: false,
@@ -743,6 +764,7 @@ class App extends React.Component<{}, AppState> {
                     ...prevState.dataFiltered, // Retain existing keys in dataFiltered, if any
                     all: _dataAll, // Update or set the "all" key
                 },
+                dataFilteredID: filteredIDs,
                 dataLoaded: true
             }));
         });
@@ -792,10 +814,11 @@ class App extends React.Component<{}, AppState> {
         if (this.state.metadataInitialized) return;
 
         this.setState({ spinner: true });
+
         try {
             const response = await fetch(baseUrl + 'getMetaData', {
                 method: 'GET',
-                headers: {'Content-Type': 'application/json'},
+                headers: { 'Content-Type': 'application/json' },
             });
 
             if (!response.ok) {
@@ -893,6 +916,7 @@ class App extends React.Component<{}, AppState> {
                 isCiteUsCalloutVisible: !this.state.isCiteUsCalloutVisible
             });
         }
+
 
         const openGScholar = (title) => {
             // Inferring+Cognitive+Models+from+Data+using+Approximate+Bayesian+Computation
@@ -1402,6 +1426,7 @@ class App extends React.Component<{}, AppState> {
             });
         }
 
+
         const allPapersTableProps: SmartTableProps = {
             loadMoreData: this.loadMoreData,
             loadAllData: this.loadAllData,
@@ -1418,7 +1443,6 @@ class App extends React.Component<{}, AppState> {
                 author: this.state.dataAuthors,
                 source: this.state.dataSources,
                 year: this.state.dataYears,
-                metaData: this.state.metaData
             },
             columnsVisible: this.state.columnsVisible["all"],
             updateVisibleColumns: (columnId) => {
@@ -1458,14 +1482,20 @@ class App extends React.Component<{}, AppState> {
 
                     // Apply filters locally to existing data
                     const filteredData = this.applyLocalFilters(this.state.dataAll, filter);
+
                     // console.log("filteredData", filteredData);
-                    this.setState((prevState) => ({
-                        dataFiltered: {
-                            ...prevState.dataFiltered,
-                            all: filteredData,
-                        },
-                        dataFilteredID: filteredData.map((paper) => paper.ID),
-                    }));
+                    this.setState((prevState) => {
+                        // Combine the existing IDs with the new ones, avoiding duplicates
+                        const newFilteredIDs = filteredData.map((paper) => paper.ID);
+                        const concatenatedFilteredIDs = Array.from(new Set([...prevState.dataFilteredID, ...newFilteredIDs]));
+                        return {
+                            dataFiltered: {
+                                ...prevState.dataFiltered,
+                                all: filteredData,
+                            },
+                            dataFilteredID: concatenatedFilteredIDs,
+                        };
+                    });
                     setTimeout(() => {
                         this.setState({spinner: false, loadingText: 'Loading Meta Data...'});
                     }, 10); // Delay of 500ms
@@ -1915,6 +1945,17 @@ class App extends React.Component<{}, AppState> {
 
         const _farItems: ICommandBarItemProps[] = [
             {
+                key: 'metaTableButton',
+                commandBarButtonAs: () => (
+                    <DefaultButton
+                        text="Meta Table"
+                        iconProps={{iconName: "Table"}}
+                        onClick={() => this.setState({isMetaTableModalOpen: !this.state.isMetaTableModalOpen})}
+                        style={{marginLeft: 8}}
+                    />
+                ),
+            },
+            {
                 key: 'embedding',
                 commandBarButtonAs: () => (
                     <>
@@ -2010,6 +2051,50 @@ class App extends React.Component<{}, AppState> {
                             },
                         }}
                     />
+                    <Modal
+                        styles={{
+                            main: {
+                                maxWidth: "600px",
+                                padding: "20px",
+                                borderRadius: "8px",
+                            },
+                        }}
+                        isOpen={this.state.isMetaTableModalOpen}
+                        onDismiss={() => this.setState({ isMetaTableModalOpen: false })}
+                        isBlocking={false}
+                    >
+                        <div className="p-lg">
+                            <h2 className="p-0 m-0">
+                                Meta Table
+                                <IconButton
+                                    className="float-right"
+                                    iconProps={{ iconName: "Times" }}
+                                    ariaLabel="Close meta table modal"
+                                    onClick={() => this.setState({ isMetaTableModalOpen: false })}
+                                />
+                            </h2>
+                            <div style={{ marginTop: "20px" }}>
+                                <Pivot linkSize={PivotLinkSize.normal} linkFormat={PivotLinkFormat.links}>
+                                    <PivotItem headerText="Keywords">
+                                        <div className="m-t-lg"></div>
+                                        <MetaTable props={keywordTableProps}></MetaTable>
+                                    </PivotItem>
+                                    <PivotItem headerText="Authors">
+                                        <div className="m-t-lg"></div>
+                                        <MetaTable props={authorTableProps}></MetaTable>
+                                    </PivotItem>
+                                    <PivotItem headerText="Source">
+                                        <div className="m-t-lg"></div>
+                                        <MetaTable props={sourceTableProps}></MetaTable>
+                                    </PivotItem>
+                                    <PivotItem headerText="Year">
+                                        <div className="m-t-lg"></div>
+                                        <MetaTable props={yearTableProps}></MetaTable>
+                                    </PivotItem>
+                                </Pivot>
+                            </div>
+                        </div>
+                    </Modal>
                     <Panel
                         headerText="Saved Papers"
                         isOpen={this.state.isPanelOpen}
@@ -2019,12 +2104,12 @@ class App extends React.Component<{}, AppState> {
                     >
                         <br/>
                         <a ref={this.state.checkoutLinkRef}></a>
-                        <SmartTable props={savedPapersTableProps} setSpinner={setSpinner}></SmartTable>
+                        <SmartTable props={savedPapersTableProps} setSpinner={this.setSpinner}></SmartTable>
                         <div style={{fontSize: '1.25em', lineHeight: '1.25em'}}>
                             <Markdown>{this.state.summarizeResponse}</Markdown></div>
                     </Panel>
                     <div className="m-t-md p-md">
-                        <SmartTable props={allPapersTableProps} setSpinner={setSpinner}></SmartTable>
+                        <SmartTable props={allPapersTableProps} setSpinner={this.setSpinner}></SmartTable>
                     </div>
                     <Split
                         sizes={[33, 39, 28]}
@@ -2081,7 +2166,7 @@ class App extends React.Component<{}, AppState> {
                                             </Stack>
                                         </React.Fragment>
                                         <div className="m-t-md"></div>
-                                        <SmartTable props={similarPapersPayloadTableProps} setSpinner={setSpinner}></SmartTable>
+                                        <SmartTable props={similarPapersPayloadTableProps} setSpinner={this.setSpinner}></SmartTable>
                                     </PivotItem>
                                     <PivotItem onRenderItemLink={_inputButtonRenderer} headerText="By Abstract">
                                         <div className="m-t-lg"></div>
@@ -2114,7 +2199,7 @@ class App extends React.Component<{}, AppState> {
                                     <PivotItem onRenderItemLink={_outputButtonRenderer} headerText={"Output Similar"}
                                                itemCount={this.state.dataSimilar.length}>
                                         <div className="m-t-lg"></div>
-                                        <SmartTable props={similarPapersTableProps} setSpinner={setSpinner}></SmartTable>
+                                        <SmartTable props={similarPapersTableProps} setSpinner={this.setSpinner}></SmartTable>
                                     </PivotItem>
                                 </Pivot>
                             </div>
@@ -2235,30 +2320,30 @@ class App extends React.Component<{}, AppState> {
                             {/*</div>*/}
                         </div>
                     </Split>
-                    <div className="split p-md p-b-0">
-                        <Stack horizontal horizontalAlign="space-between" verticalAlign="center"
-                               tokens={{childrenGap: 8}}>
-                            <Label style={{fontSize: "1.2rem"}}>Meta</Label>
-                        </Stack>
-                        <Pivot linkSize={PivotLinkSize.normal} linkFormat={PivotLinkFormat.links}>
-                            <PivotItem headerText={"Keywords"}>
-                                <div className="m-t-lg"></div>
-                                <MetaTable props={keywordTableProps}></MetaTable>
-                            </PivotItem>
-                            <PivotItem headerText={"Authors"}>
-                                <div className="m-t-lg"></div>
-                                <MetaTable props={authorTableProps}></MetaTable>
-                            </PivotItem>
-                            <PivotItem headerText={"Source"}>
-                                <div className="m-t-lg"></div>
-                                <MetaTable props={sourceTableProps}></MetaTable>
-                            </PivotItem>
-                            <PivotItem headerText={"Year"}>
-                                <div className="m-t-lg"></div>
-                                <MetaTable props={yearTableProps}></MetaTable>
-                            </PivotItem>
-                        </Pivot>
-                    </div>
+                    {/*<div className="split p-md p-b-0">*/}
+                    {/*    <Stack horizontal horizontalAlign="space-between" verticalAlign="center"*/}
+                    {/*           tokens={{childrenGap: 8}}>*/}
+                    {/*        <Label style={{fontSize: "1.2rem"}}>Meta</Label>*/}
+                    {/*    </Stack>*/}
+                    {/*    <Pivot linkSize={PivotLinkSize.normal} linkFormat={PivotLinkFormat.links}>*/}
+                    {/*        <PivotItem headerText={"Keywords"}>*/}
+                    {/*            <div className="m-t-lg"></div>*/}
+                    {/*            <MetaTable props={keywordTableProps}></MetaTable>*/}
+                    {/*        </PivotItem>*/}
+                    {/*        <PivotItem headerText={"Authors"}>*/}
+                    {/*            <div className="m-t-lg"></div>*/}
+                    {/*            <MetaTable props={authorTableProps}></MetaTable>*/}
+                    {/*        </PivotItem>*/}
+                    {/*        <PivotItem headerText={"Source"}>*/}
+                    {/*            <div className="m-t-lg"></div>*/}
+                    {/*            <MetaTable props={sourceTableProps}></MetaTable>*/}
+                    {/*        </PivotItem>*/}
+                    {/*        <PivotItem headerText={"Year"}>*/}
+                    {/*            <div className="m-t-lg"></div>*/}
+                    {/*            <MetaTable props={yearTableProps}></MetaTable>*/}
+                    {/*        </PivotItem>*/}
+                    {/*    </Pivot>*/}
+                    {/*</div>*/}
 
 
                 </LoadingOverlay>
