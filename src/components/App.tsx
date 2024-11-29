@@ -208,13 +208,14 @@ const maxSimilarPapersDropdownOptions = [
     {key: '-1', text: 'All'},
 ];
 
-const preprocessMetadata = (metadata) => {
+const preprocessMetadata = (metadata, keyColumn = "Keyword", valueColumn = "Count") => {
     if (!metadata) return [];
     return metadata.map(({ _id, count }) => ({
-        Keyword: _id, // Assuming _id is the keyword
-        Count: count,
+        [keyColumn]: _id, // Dynamically assign the keyColumn name
+        [valueColumn]: count, // Dynamically assign the valueColumn name
     }));
 };
+
 class App extends React.Component<{}, AppState> {
 
     constructor(props: any) {
@@ -1155,62 +1156,65 @@ class App extends React.Component<{}, AppState> {
             embeddingType: this.state.embeddingType.key as string,
             hasEmbeddings: hasEmbeddings,
             tableData: {
-                all: this.state.dataAll,
-                saved: this.state.dataSaved,
-                similar: this.state.dataSimilar,
-                similarPayload: this.state.dataSimilarPayload,
-                keyword: this.state.dataKeywords,
-                author: this.state.dataAuthors,
-                source: this.state.dataSources,
-                year: this.state.dataYears,
+                all: preprocessMetadata(this.state.yearsSummary, "Year"), // Use yearsSummary here
+                saved: [],
+                similar: [],
+                similarPayload: [],
+                keyword: [],
+                author: [],
+                source: [],
+                year: [],
             },
-            columnsVisible: this.state.columnsVisible["year"],
+            columnsVisible: ["Year","Count"],
             updateVisibleColumns: (columnId) => {
                 updateVisibleColumns(columnId, "year");
             },
-            columnSortByValues: this.state.columnSortByValues["year"],
+            columnSortByValues: this.state.columnSortByValues["Count"],
             updateColumnSortByValues: (sortBy) => {
-                this.updateStateProp("columnSortByValues", sortBy, "year");
+                this.updateStateProp("columnSortByValues", sortBy, "Count");
             },
             columnFilterValues: this.state.columnFilterValues["year"],
             updateColumnFilterValues: (filter) => {
                 this.updateStateProp("columnFilterValues", filter, "year");
             },
-            globalFilterValue: this.state.globalFilterValue["source"],
+            globalFilterValue: this.state.globalFilterValue["year"],
             updateGlobalFilterValue: (filter) => {
                 this.updateStateProp("globalFilterValue", filter, "year");
             },
-            columnFilterTypes: this.state.columnFilterTypes,
+            columnFilterTypes: {
+                ...this.state.columnFilterTypes, // Use the existing filter types from state
+                Count: "range", // Override the Count column to be of type "range"
+            },
             setFilteredPapers: (dataFiltered) => {
                 this.updateStateProp("dataFiltered", dataFiltered, "year")
             },
             dataFiltered: this.state.dataFiltered["year"],
             columnWidths: this.state.columnWidths,
             tableControls: [],
-            columnIds: this.state.columns["year"],
-        }
+            columnIds: ["Year", "Count"], // Define specific columns for Year
+        };
 
         const sourceTableProps: SmartTableProps = {
             tableType: "source",
             embeddingType: this.state.embeddingType.key as string,
             hasEmbeddings: hasEmbeddings,
             tableData: {
-                all: this.state.dataAll,
-                saved: this.state.dataSaved,
-                similar: this.state.dataSimilar,
-                similarPayload: this.state.dataSimilarPayload,
-                keyword: this.state.dataKeywords,
-                author: this.state.dataAuthors,
-                source: this.state.dataSources,
-                year: this.state.dataYears,
+                all: preprocessMetadata(this.state.sourcesSummary, "Source"), // Use sourcesSummary here
+                saved: [],
+                similar: [],
+                similarPayload: [],
+                keyword: [],
+                author: [],
+                source: [],
+                year: [],
             },
-            columnsVisible: this.state.columnsVisible["source"],
+            columnsVisible: ["Source","Count"],
             updateVisibleColumns: (columnId) => {
                 updateVisibleColumns(columnId, "source");
             },
-            columnSortByValues: this.state.columnSortByValues["source"],
+            columnSortByValues: this.state.columnSortByValues["Count"],
             updateColumnSortByValues: (sortBy) => {
-                this.updateStateProp("columnSortByValues", sortBy, "source");
+                this.updateStateProp("columnSortByValues", sortBy, "Count");
             },
             columnFilterValues: this.state.columnFilterValues["source"],
             updateColumnFilterValues: (filter) => {
@@ -1220,37 +1224,40 @@ class App extends React.Component<{}, AppState> {
             updateGlobalFilterValue: (filter) => {
                 this.updateStateProp("globalFilterValue", filter, "source");
             },
-            columnFilterTypes: this.state.columnFilterTypes,
+            columnFilterTypes: {
+                ...this.state.columnFilterTypes, // Use the existing filter types from state
+                Count: "range", // Override the Count column to be of type "range"
+            },
             setFilteredPapers: (dataFiltered) => {
                 this.updateStateProp("dataFiltered", dataFiltered, "source")
             },
             dataFiltered: this.state.dataFiltered["source"],
             columnWidths: this.state.columnWidths,
             tableControls: [],
-            columnIds: this.state.columns["source"],
-        }
+            columnIds: ["Source", "Count"], // Define specific columns for Source
+        };
 
         const authorTableProps: SmartTableProps = {
             tableType: "author",
             embeddingType: this.state.embeddingType.key as string,
             hasEmbeddings: hasEmbeddings,
             tableData: {
-                all: preprocessMetadata(this.state.authorsSummary), // Use authorsSummary here
-                saved: this.state.dataSaved,
-                similar: this.state.dataSimilar,
-                similarPayload: this.state.dataSimilarPayload,
-                keyword: this.state.dataKeywords,
-                author: this.state.dataAuthors,
-                source: this.state.dataSources,
-                year: this.state.dataYears,
+                all: preprocessMetadata(this.state.authorsSummary,'Author'), // Use authorsSummary here
+                saved: [],
+                similar: [],
+                similarPayload: [],
+                keyword: [],
+                author: [],
+                source: [],
+                year: [],
             },
-            columnsVisible: this.state.columnsVisible["author"],
+            columnsVisible:["Author","Count"],
             updateVisibleColumns: (columnId) => {
                 updateVisibleColumns(columnId, "author");
             },
-            columnSortByValues: this.state.columnSortByValues["author"],
+            columnSortByValues: this.state.columnSortByValues["Count"],
             updateColumnSortByValues: (sortBy) => {
-                this.updateStateProp("columnSortByValues", sortBy, "author");
+                this.updateStateProp("columnSortByValues", sortBy, "Count");
             },
             columnFilterValues: this.state.columnFilterValues["author"],
             updateColumnFilterValues: (filter) => {
@@ -1260,23 +1267,24 @@ class App extends React.Component<{}, AppState> {
             updateGlobalFilterValue: (filter) => {
                 this.updateStateProp("globalFilterValue", filter, "author");
             },
-            columnFilterTypes: this.state.columnFilterTypes,
+            columnFilterTypes: {
+                ...this.state.columnFilterTypes, // Use the existing filter types from state
+                Count: "range", // Override the Count column to be of type "range"
+            },
             setFilteredPapers: (dataFiltered) => {
                 this.updateStateProp("dataFiltered", dataFiltered, "author")
             },
             dataFiltered: this.state.dataFiltered["author"],
             columnWidths: this.state.columnWidths,
             tableControls: [],
-            columnIds: this.state.columns["author"],
-
-        }
-
+            columnIds: ["Author", "Count"], // Define specific columns for Author
+        };
         const keywordTableProps: SmartTableProps = {
             tableType: "keyword",
             embeddingType: this.state.embeddingType.key as string,
             hasEmbeddings: hasEmbeddings,
             tableData: {
-                all: preprocessMetadata(this.state.keywordsSummary), // Use preprocessed metadata here
+                all: preprocessMetadata(this.state.keywordsSummary, 'Keyword'), // Use preprocessed metadata here
                 saved: [],
                 similar: [],
                 similarPayload: [],
@@ -1303,8 +1311,8 @@ class App extends React.Component<{}, AppState> {
                 this.updateStateProp("globalFilterValue", filter, "keyword");
             },
             columnFilterTypes: {
-                Keyword: "multiselect",
-                Count: "range", // Specify that Count uses the range filter
+                ...this.state.columnFilterTypes, // Use the existing filter types from state
+                Count: "range", // Override the Count column to be of type "range"
             },
             setFilteredPapers: (dataFiltered) => {
                 this.updateStateProp("dataFiltered", dataFiltered, "keyword");

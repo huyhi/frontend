@@ -299,7 +299,7 @@ function NumberRangeColumnFilter({
     //     })
     //     return [min, max];
     // }, [preFilteredRows]);
-    const defaultRange = [0, 1611]; // Provide general defaults if min/max are not defined
+    const defaultRange = [1974, 2023]; // Provide general defaults if min/max are not defined
     const range = (min !== undefined && max !== undefined) ? [min, max] : defaultRange;
 
     const [value, setValue] = useState(filterValue?.length ? filterValue : range);
@@ -1542,6 +1542,7 @@ export const MetaTable: React.FC<{
         isInSelectedNodeIDs, loadMoreData, hasMoreData, loadAllData, dataAuthors, dataSources,
         dataKeywords, staticMinYear,staticMaxYear,staticMinCitationCounts,staticMaxCitationCounts, applyLocalFilters
     } = props;
+    console.log('columnFilterTypes:',columnFilterTypes)
     const minYearRef = useRef(staticMinYear);
     const maxYearRef = useRef(staticMaxYear);
     const minCitationCountRef = useRef(staticMinCitationCounts);
@@ -1563,13 +1564,9 @@ export const MetaTable: React.FC<{
     const [filteredLocalData, setFilteredLocalData] = useState([]);
     // console.log("tableType:",tableType);
     console.log(tableData.all);
-    const isMetadata = tableType === "keyword" && Array.isArray(tableData.all) && tableData.all[0]?.Keyword;
+    // const isMetadata = tableType === "keyword" && Array.isArray(tableData.all) && tableData.all[0]?.Keyword;
     let data;
-    if(isMetadata){
-        data = tableData.all;
-    }else{
-        data = tableType === "all" ? dataFiltered : tableData[tableType];
-    }
+    data = tableData.all;
     console.log("Data for table:", data);
     if (!Array.isArray(data)) {
         console.error("Data is not an array or is undefined:", data);
