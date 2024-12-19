@@ -83,8 +83,8 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
     const [colorByAttribute, setColorByAttribute] = React.useState<IDropdownOption>(colorByDropdownOptions[0]);
     const embeddingKey = embeddingType + "_umap";
     // const [selectedPaper, setSelectedPaper] = useState(null);
-    console.log('dataFiltered in paper Scatter',dataFiltered);
-    console.log('data in paper Scatter',data);
+    // console.log('dataFiltered in paper Scatter',dataFiltered);
+    // console.log('data in paper Scatter',data);
 
     React.useEffect(() => {
         papersToShow = [...data];
@@ -305,7 +305,7 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
                     }
                 }else{
                     colorByValue = "Filtered";
-                    console.log("data is in Filtered");
+                    // console.log("data is in Filtered");
                     if(!(colorByValue in colorByMap)){
                         colorByMap[colorByValue] = [colorValueIndex++, colorListTableTypes[0]];
                     }
@@ -443,11 +443,11 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
                 },
                 body: JSON.stringify(queryPayload),
             });
-            console.log('response',response)
+            // console.log('response',response)
 
             if (response.ok) {
                 const paperData = await response.json();
-                console.log('paperData:',paperData)
+                // console.log('paperData:',paperData)
                 return paperData.length > 0 ? paperData[0] : null; // Return the paper details
             } else {
                 console.error("Failed to fetch paper details");
@@ -672,7 +672,7 @@ export const PaperScatter: React.FC<{props: AppProps}> = observer(({props}) => {
                                     React.useEffect(() => {
                                         const fetchData = async () => {
                                             const data = await fetchPaperDetails(paperID);
-                                            console.log('fetchedPaperDetail:',data);
+                                            // console.log('fetchedPaperDetail:',data);
                                             setPaperData(data);
                                             setLoading(false);
                                         };

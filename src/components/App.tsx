@@ -755,7 +755,7 @@ class App extends React.Component<{}, AppState> {
             parent.updateStateProp("paperNoEmbeddings", _paperNoEmbeddings["glove"], "glove");
             parent.updateStateProp("paperNoEmbeddings", _paperNoEmbeddings["specter"], "specter");
             parent.updateStateProp("paperNoEmbeddings", _paperNoEmbeddings["ada"], "ada");
-            console.log('dataAll:', _dataAll);
+            // console.log('dataAll:', _dataAll);
             const filteredIDs = _dataAll.map((paper) => paper.ID);
             parent.setState((prevState) => ({
                 dataAll: _dataAll,
@@ -765,7 +765,8 @@ class App extends React.Component<{}, AppState> {
                     all: _dataAll, // Update or set the "all" key
                 },
                 dataFilteredID: filteredIDs,
-                dataLoaded: true
+                dataLoaded: true,
+                offset: _dataAll.length,
             }));
         });
     }
@@ -826,7 +827,7 @@ class App extends React.Component<{}, AppState> {
             }
 
             const data = await response.json();
-            console.log("Fetched Metadata:", data);
+            // console.log("Fetched Metadata:", data);
 
             // Safeguards and data processing
             let authorsSummary = data.authors_summary || [];
@@ -839,7 +840,7 @@ class App extends React.Component<{}, AppState> {
 
             let keywordsSummary = data.keywords_summary || [];
             const keywords = keywordsSummary.map(item => item._id);
-            console.log('keywordsSummary',keywordsSummary);
+            // console.log('keywordsSummary',keywordsSummary);
             keywordsSummary = (keywordsSummary || []).sort((a, b) => b.count - a.count);
 
             let yearsSummary = data.years_summary || [];
@@ -895,17 +896,17 @@ class App extends React.Component<{}, AppState> {
         }
     };
 
-    componentDidUpdate(prevProps, prevState) {
-        if (prevState.dataAuthors !== this.state.dataAuthors) {
-            console.log("dataAuthors updated:", this.state.dataAuthors);
-        }
-        if (prevState.dataSources !== this.state.dataSources) {
-            console.log("dataSources updated:", this.state.dataSources);
-        }
-        if (prevState.dataKeywords !== this.state.dataKeywords) {
-            console.log("dataKeywords updated:", this.state.dataKeywords);
-        }
-    }
+    // componentDidUpdate(prevProps, prevState) {
+    //     if (prevState.dataAuthors !== this.state.dataAuthors) {
+    //         console.log("dataAuthors updated:", this.state.dataAuthors);
+    //     }
+    //     if (prevState.dataSources !== this.state.dataSources) {
+    //         console.log("dataSources updated:", this.state.dataSources);
+    //     }
+    //     if (prevState.dataKeywords !== this.state.dataKeywords) {
+    //         console.log("dataKeywords updated:", this.state.dataKeywords);
+    //     }
+    // }
 
     public render() {
 
@@ -1130,6 +1131,7 @@ class App extends React.Component<{}, AppState> {
                     "dimensions": this.state.similarityType.key
                 })
             };
+            console.log("requestOptions",requestOptions)
             fetch(baseUrl + "getSimilarPapers", requestOptions)
                 .then(response => response.json())
                 .then((data) => {
@@ -1476,7 +1478,7 @@ class App extends React.Component<{}, AppState> {
                     // Update the column filter values
                     this.updateStateProp("columnFilterValues", filter, "all");
                 } else {
-                    console.log("Updating column filter values:", filter);
+                    // console.log("Updating column filter values:", filter);
                     // Update column filter values without resetting data or calling loadMoreData
                     this.updateStateProp("columnFilterValues", filter, "all");
 
@@ -1525,7 +1527,7 @@ class App extends React.Component<{}, AppState> {
                     // Update the column filter values
                     this.updateStateProp("columnFilterValues", filter, "all");
                 } else {
-                    console.log("Updating column filter values:", filter);
+                    // console.log("Updating column filter values:", filter);
                     // Update column filter values without resetting data or calling loadMoreData
                     this.updateStateProp("columnFilterValues", filter, "all");
 

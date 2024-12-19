@@ -360,7 +360,7 @@ function MultiSelectTokensColumnFilter({
         options = [...new Set(dataSources)].sort();
     } else if (id === 'Keyword'&&dataKeywords){
         options = [...new Set(dataKeywords)].sort();
-        console.log("options",options)
+        // console.log("options",options)
     }
     else {
         options = React.useMemo(() => {
@@ -392,10 +392,10 @@ function MultiSelectTokensColumnFilter({
             }
         });
         const selectedValues = _selOpts.map(opt => opt.value);
-        console.log("Selected OptionsInToken:", _selOpts); // Log selected options
-        console.log("Filtered Values before SetInToken:", filteredValues); // Log values before uniqueness
+        // console.log("Selected OptionsInToken:", _selOpts); // Log selected options
+        // console.log("Filtered Values before SetInToken:", filteredValues); // Log values before uniqueness
         filteredValues = [...new Set(filteredValues)];
-        console.log("Filtered Values after SetInToken:", filteredValues); // Log unique filtered values
+        // console.log("Filtered Values after SetInToken:", filteredValues); // Log unique filtered values
 
         setMultiSelectTokenSelectedOptions(_selOpts);
         setFilter(selectedValues.length > 0 ? selectedValues : undefined);
@@ -417,7 +417,7 @@ function MultiSelectTokensColumnFilter({
                         }
                     }
                 });
-                console.log('filteredValues:',filteredValues);
+                // console.log('filteredValues:',filteredValues);
                 setFilter(filteredValues.length > 0 ? filteredValues : undefined);
             }
         }
@@ -459,11 +459,11 @@ function MultiSelectColumnFilter({
                                  }) {
     // Calculate the options for filtering
     // using the preFilteredRows
-    console.log("dataAuthors in MultiSelectColumnFilter:", dataAuthors);
-    console.log("dataKeywords in MultiSelectColumnFilter:", dataKeywords);
-    console.log("id",id);
-    console.log("filterValue",filterValue);
-    console.log("setFilter",setFilter);
+    // console.log("dataAuthors in MultiSelectColumnFilter:", dataAuthors);
+    // console.log("dataKeywords in MultiSelectColumnFilter:", dataKeywords);
+    // console.log("id",id);
+    // console.log("filterValue",filterValue);
+    // console.log("setFilter",setFilter);
     let options = [];
     // console.log('inner metadata', metadata)
     if (id === 'Authors' && dataAuthors) {
@@ -502,11 +502,11 @@ function MultiSelectColumnFilter({
                 return rowValues.some(r => selectedOptions.some(option => option.value === r));
             })
             .map(row => row.values[id]);
-        console.log("Selected Options_ColumnFilter:", selectedOptions); // Log selected options
-        console.log("Filtered Values before Set:", filteredValues); // Log values before uniqueness
+        // console.log("Selected Options_ColumnFilter:", selectedOptions); // Log selected options
+        // console.log("Filtered Values before Set:", filteredValues); // Log values before uniqueness
 
         const uniqueFilteredValues = [...new Set(filteredValues)];
-        console.log("Filtered Values after Set:", uniqueFilteredValues); // Log unique filtered values
+        // console.log("Filtered Values after Set:", uniqueFilteredValues); // Log unique filtered values
 
 
         setMultiSelectTokenSelectedOptions(selectedOptions);
@@ -559,8 +559,8 @@ function DefaultColumnFilter({
 
 function filterMapping(filter, dataAuthors, dataSources, dataKeywords,setSpinner, columnId, staticMinYear = 1975, staticMaxYear = 2024, staticMinCitationCounts = 0, staticMaxCitationCounts = 1000) {
     if (filter === "multiselect") {
-        console.log("Passing dataAuthors to MultiSelectColumnFilter:", dataAuthors);
-        console.log("Passing dataKeywords to MultiSelectColumnFilter:", dataKeywords);
+        // console.log("Passing dataAuthors to MultiSelectColumnFilter:", dataAuthors);
+        // console.log("Passing dataKeywords to MultiSelectColumnFilter:", dataKeywords);
         return { Filter: (props) => (<MultiSelectColumnFilter
                 {...props}
                 dataAuthors={dataAuthors}
@@ -1557,13 +1557,13 @@ export const SmartTable: React.FC<{
 
     const [filteredLocalData, setFilteredLocalData] = useState([]);
     // console.log("tableType:",tableType);
-    if (tableType === "all") {
-        console.log("dataFiltered", dataFiltered);
-        console.log("SmartTable dataAuthors received:", dataAuthors);
-        console.log("SmartTable dataKeywords received:", dataKeywords);
-    }
+    // if (tableType === "all") {
+        // console.log("dataFiltered", dataFiltered);
+        // console.log("SmartTable dataAuthors received:", dataAuthors);
+        // console.log("SmartTable dataKeywords received:", dataKeywords);
+    // }
     const data = tableType === "all" ? dataFiltered : tableData[tableType];
-    console.log("Data for table:", data);
+    // console.log("Data for table:", data);
     if (!Array.isArray(data)) {
         console.error("Data is not an array or is undefined:", data);
     }
@@ -1606,7 +1606,7 @@ export const SmartTable: React.FC<{
         staticMinCitationCounts,
         staticMaxCitationCounts
     ]);
-    console.log("Columns:", columns);
+    // console.log("Columns:", columns);
 
     // We need to keep the table from resetting the pageIndex when we
     // Update data. So we can keep track of that flag with a ref.
