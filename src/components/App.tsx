@@ -42,7 +42,7 @@ import {
     IconButton,
     IDropdownOption,
     IPivotItemProps,
-    Label,Modal,
+    Label, Modal,
     Panel,
     PanelType,
     Pivot,
@@ -154,6 +154,8 @@ interface AppState {
     dataSimilarPayloadID: Array<any>;
     dataSimilarID: Array<any>;
     similarityPanelSelectedKey: String;
+    similarMinScore: number;
+    similarMaxScore: number;
     selectNodeIDs: Array<any>;
     searchTitle: string;
     searchAbstract: string;
@@ -178,7 +180,7 @@ interface AppState {
     hasMoreData: boolean;
     dataLoaded: boolean;
     isMetaTableModalOpen: boolean;
-    allDataLoaded:boolean;
+    allDataLoaded: boolean;
 }
 
 interface TabType {
@@ -209,7 +211,7 @@ const maxSimilarPapersDropdownOptions = [
     {key: '-1', text: 'All'},
 ];
 const areQueryConditionsUndefined = (queryPayload) => {
-    const { title, author, source, keyword, min_year, max_year, abstract, min_citation_counts, max_citation_counts } = queryPayload;
+    const {title, author, source, keyword, min_year, max_year, abstract, min_citation_counts, max_citation_counts} = queryPayload;
 
     return (
         title === undefined &&
@@ -227,7 +229,7 @@ const areQueryConditionsUndefined = (queryPayload) => {
 
 const preprocessMetadata = (metadata, keyColumn = "Keyword", valueColumn = "Count") => {
     if (!metadata) return [];
-    return metadata.map(({ _id, count }) => ({
+    return metadata.map(({_id, count}) => ({
         [keyColumn]: _id, // Dynamically assign the keyColumn name
         [valueColumn]: count, // Dynamically assign the valueColumn name
     }));
@@ -393,18 +395,22 @@ class App extends React.Component<{}, AppState> {
             offset: 0,
             hasMoreData: true,
             allDataLoaded: false,
-            isMetaTableModalOpen:false,
+            isMetaTableModalOpen: false,
+            similarMaxScore: 0,
+            similarMinScore: 0,
         }
         this.setSpinner = this.setSpinner.bind(this);
     }
+
     setSpinner(isSpinnerActive: boolean, loadingText: string = 'Loading...') {
         this.setState({
             spinner: isSpinnerActive,
             loadingText: loadingText,
         });
     }
+
     setMetaTableModalState = (isOpen: boolean) => {
-        this.setState({ isMetaTableModalOpen: isOpen });
+        this.setState({isMetaTableModalOpen: isOpen});
     };
 
 
@@ -507,8 +513,8 @@ class App extends React.Component<{}, AppState> {
                 console.log('dataFiltered after loadmore', this.state.dataFiltered);
             } catch (error) {
                 console.error("Error loading more data:", error);
-                this.setState({ spinner: false });
-                this.setState({ loadingText: 'Loading...' });
+                this.setState({spinner: false});
+                this.setState({loadingText: 'Loading...'});
             }
         }
     };
@@ -607,7 +613,7 @@ class App extends React.Component<{}, AppState> {
         const filteredData = data.filter((row) => {
             // Apply column filters
             const columnFilterPass = columnFilters.every((filter) => {
-                const { id, value } = filter;
+                const {id, value} = filter;
 
 
                 // Skip null filters
@@ -634,7 +640,7 @@ class App extends React.Component<{}, AppState> {
                         return value.some((filterVal) => columnValue.includes(filterVal));
                     }
                     return columnValue.includes(value); // Single value match
-                }else if (typeof columnValue === 'string') {
+                } else if (typeof columnValue === 'string') {
                     // Handle string fields like `Title`, `Source`, and `Abstract`
                     if (Array.isArray(value)) {
                         // Match if any filter value exists in the string (case-insensitive)
@@ -814,12 +820,12 @@ class App extends React.Component<{}, AppState> {
     getMetaData = async () => {
         if (this.state.metadataInitialized) return;
 
-        this.setState({ spinner: true });
+        this.setState({spinner: true});
 
         try {
             const response = await fetch(baseUrl + 'getMetaData', {
                 method: 'GET',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {'Content-Type': 'application/json'},
             });
 
             if (!response.ok) {
@@ -832,7 +838,7 @@ class App extends React.Component<{}, AppState> {
             // Safeguards and data processing
             let authorsSummary = data.authors_summary || [];
             const authors = authorsSummary.map(item => item._id);
-            authorsSummary=(authorsSummary || []).sort((a, b) => b.count - a.count);
+            authorsSummary = (authorsSummary || []).sort((a, b) => b.count - a.count);
 
             let sourcesSummary = data.sources_summary || [];
             const sources = sourcesSummary.map(item => item._id);
@@ -876,7 +882,7 @@ class App extends React.Component<{}, AppState> {
             });
         } catch (error) {
             console.error("Error fetching metadata:", error);
-            this.setState({ spinner: false });
+            this.setState({spinner: false});
         }
     };
 
@@ -892,7 +898,7 @@ class App extends React.Component<{}, AppState> {
             this.getUmapPoints(); // Load UMAP points data
         } catch (error) {
             console.error("Error loading initial data:", error);
-            this.setState({ dataLoaded: false });
+            this.setState({dataLoaded: false});
         }
     };
 
@@ -911,7 +917,7 @@ class App extends React.Component<{}, AppState> {
     public render() {
 
 
-        const { dataLoaded } = this.state;
+        const {dataLoaded} = this.state;
         const toggleIsCiteUsCalloutVisible = () => {
             this.setState({
                 isCiteUsCalloutVisible: !this.state.isCiteUsCalloutVisible
@@ -1131,15 +1137,22 @@ class App extends React.Component<{}, AppState> {
                     "dimensions": this.state.similarityType.key
                 })
             };
-            console.log("requestOptions",requestOptions)
+            console.log("requestOptions", requestOptions)
             fetch(baseUrl + "getSimilarPapers", requestOptions)
                 .then(response => response.json())
                 .then((data) => {
                     updateSimilarPaperIDs(data);
+                    const scores = data.map(d => d.score || 0); // in case some docs have no score
+                    const minScore = Math.min(...scores);
+                    const maxScore = Math.max(...scores);
                     parent.setState({
-                        "dataSimilar": data,
-                        "spinner": false,
-                        "similarityPanelSelectedKey": String(2) // Redirect to the `Output Similar` tab.
+                        dataSimilar: data,
+                        spinner: false,
+                        similarityPanelSelectedKey: String(2), // Redirect to the `Output Similar` tab
+                        similarMinScore: minScore,
+                        similarMaxScore: maxScore
+                    }, () => {
+                        console.log("Updated State:", this.state.dataSimilar); // Log updated state
                     });
                 });
         }
@@ -1212,7 +1225,7 @@ class App extends React.Component<{}, AppState> {
                 source: [],
                 year: [],
             },
-            columnsVisible: ["Year","Count"],
+            columnsVisible: ["Year", "Count"],
             updateVisibleColumns: (columnId) => {
                 updateVisibleColumns(columnId, "year");
             },
@@ -1255,7 +1268,7 @@ class App extends React.Component<{}, AppState> {
                 source: [],
                 year: [],
             },
-            columnsVisible: ["Source","Count"],
+            columnsVisible: ["Source", "Count"],
             updateVisibleColumns: (columnId) => {
                 updateVisibleColumns(columnId, "source");
             },
@@ -1289,7 +1302,7 @@ class App extends React.Component<{}, AppState> {
             embeddingType: this.state.embeddingType.key as string,
             hasEmbeddings: hasEmbeddings,
             tableData: {
-                all: preprocessMetadata(this.state.authorsSummary,'Author'), // Use authorsSummary here
+                all: preprocessMetadata(this.state.authorsSummary, 'Author'), // Use authorsSummary here
                 saved: [],
                 similar: [],
                 similarPayload: [],
@@ -1298,7 +1311,7 @@ class App extends React.Component<{}, AppState> {
                 source: [],
                 year: [],
             },
-            columnsVisible:["Author","Count"],
+            columnsVisible: ["Author", "Count"],
             updateVisibleColumns: (columnId) => {
                 updateVisibleColumns(columnId, "author");
             },
@@ -1456,11 +1469,11 @@ class App extends React.Component<{}, AppState> {
             },
             columnFilterValues: this.state.columnFilterValues["all"],
             updateColumnFilterValues: (filter) => {
-                const { allDataLoaded,columnFilterValues} = this.state;
+                const {allDataLoaded, columnFilterValues} = this.state;
                 this.setState({spinner: true, loadingText: 'Loading Data...'});
                 if (JSON.stringify(columnFilterValues["all"]) === JSON.stringify(filter)) {
                     setTimeout(() => {
-                        this.setState({ spinner: false, loadingText: 'Loading Meta Data...' });
+                        this.setState({spinner: false, loadingText: 'Loading Meta Data...'});
                     }, 10); // Delay of 500ms
                     return;
                 }
@@ -1505,11 +1518,11 @@ class App extends React.Component<{}, AppState> {
             },
             globalFilterValue: this.state.globalFilterValue["all"],
             updateGlobalFilterValue: (filter) => {
-                const { allDataLoaded,columnFilterValues} = this.state;
+                const {allDataLoaded, columnFilterValues} = this.state;
                 this.setState({spinner: true, loadingText: 'Loading Data...'});
                 if (JSON.stringify(columnFilterValues["all"]) === JSON.stringify(filter)) {
                     setTimeout(() => {
-                        this.setState({ spinner: false, loadingText: 'Loading Meta Data...' });
+                        this.setState({spinner: false, loadingText: 'Loading Meta Data...'});
                     }, 10); // Delay of 500ms
                     return;
                 }
@@ -1799,6 +1812,8 @@ class App extends React.Component<{}, AppState> {
             isInSavedPapers: isInSavedPapers,
             openGScholar: openGScholar,
             isInSelectedNodeIDs: isInSelectedNodeIDs,
+            similarMinScore: this.state.similarMinScore,
+            similarMaxScore: this.state.similarMaxScore,
         }
 
         const similarPapersPayloadTableProps: SmartTableProps = {
@@ -2007,7 +2022,8 @@ class App extends React.Component<{}, AppState> {
                 </div>
             );
         }
-        const { metadataInitialized, spinner ,loadingText} = this.state;
+
+        const {metadataInitialized, spinner, loadingText} = this.state;
         if (!metadataInitialized) {
             return (
                 <LoadingOverlay
@@ -2047,7 +2063,7 @@ class App extends React.Component<{}, AppState> {
                                 paddingBottom: 0,
                                 marginTop: -7,
                                 borderBottom: "1px solid #ededed",
-                                height:60,
+                                height: 60,
                                 display: 'flex',
                                 alignItems: 'center',
                             },
@@ -2062,7 +2078,7 @@ class App extends React.Component<{}, AppState> {
                             },
                         }}
                         isOpen={this.state.isMetaTableModalOpen}
-                        onDismiss={() => this.setState({ isMetaTableModalOpen: false })}
+                        onDismiss={() => this.setState({isMetaTableModalOpen: false})}
                         isBlocking={false}
                     >
                         <div className="p-lg">
@@ -2070,12 +2086,12 @@ class App extends React.Component<{}, AppState> {
                                 Meta Table
                                 <IconButton
                                     className="float-right"
-                                    iconProps={{ iconName: "Times" }}
+                                    iconProps={{iconName: "Times"}}
                                     ariaLabel="Close meta table modal"
-                                    onClick={() => this.setState({ isMetaTableModalOpen: false })}
+                                    onClick={() => this.setState({isMetaTableModalOpen: false})}
                                 />
                             </h2>
-                            <div style={{ marginTop: "20px" }}>
+                            <div style={{marginTop: "20px"}}>
                                 <Pivot linkSize={PivotLinkSize.normal} linkFormat={PivotLinkFormat.links}>
                                     <PivotItem headerText="Keywords">
                                         <div className="m-t-lg"></div>
@@ -2168,7 +2184,8 @@ class App extends React.Component<{}, AppState> {
                                             </Stack>
                                         </React.Fragment>
                                         <div className="m-t-md"></div>
-                                        <SmartTable props={similarPapersPayloadTableProps} setSpinner={this.setSpinner}></SmartTable>
+                                        <SmartTable props={similarPapersPayloadTableProps}
+                                                    setSpinner={this.setSpinner}></SmartTable>
                                     </PivotItem>
                                     <PivotItem onRenderItemLink={_inputButtonRenderer} headerText="By Abstract">
                                         <div className="m-t-lg"></div>
@@ -2201,7 +2218,8 @@ class App extends React.Component<{}, AppState> {
                                     <PivotItem onRenderItemLink={_outputButtonRenderer} headerText={"Output Similar"}
                                                itemCount={this.state.dataSimilar.length}>
                                         <div className="m-t-lg"></div>
-                                        <SmartTable props={similarPapersTableProps} setSpinner={this.setSpinner}></SmartTable>
+                                        <SmartTable props={similarPapersTableProps}
+                                                    setSpinner={this.setSpinner}></SmartTable>
                                     </PivotItem>
                                 </Pivot>
                             </div>
@@ -2273,7 +2291,8 @@ class App extends React.Component<{}, AppState> {
                                             onClick={() => this.removeTab(tab.id)}
                                             aria-label="Close tab"
                                         >
-                                            <FontAwesomeIcon icon={faTimes} style={{ color: "grey", fontSize: "1rem", marginLeft: '8px' }} />
+                                            <FontAwesomeIcon icon={faTimes}
+                                                             style={{color: "grey", fontSize: "1rem", marginLeft: '8px'}}/>
                                         </Button>
                                     </Nav.Item>
                                 ))}
@@ -2293,9 +2312,9 @@ class App extends React.Component<{}, AppState> {
                                             viewBox="0 0 24 24"
                                             className="add-icon"
                                         >
-                                            <circle cx="12" cy="12" r="10" stroke="gray" strokeWidth="1.5" fill="none" />
-                                            <line x1="8" y1="12" x2="16" y2="12" stroke="gray" strokeWidth="1.5" />
-                                            <line x1="12" y1="8" x2="12" y2="16" stroke="gray" strokeWidth="1.5" />
+                                            <circle cx="12" cy="12" r="10" stroke="gray" strokeWidth="1.5" fill="none"/>
+                                            <line x1="8" y1="12" x2="16" y2="12" stroke="gray" strokeWidth="1.5"/>
+                                            <line x1="12" y1="8" x2="12" y2="16" stroke="gray" strokeWidth="1.5"/>
                                         </svg>
                                     </Button>
                                 </Nav.Item>

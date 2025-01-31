@@ -231,14 +231,34 @@ const EditableCell = ({
 
     if (["Sim"].indexOf(id) !== -1) {
 
-        const val = initialValue / 1; // Max Similarity Value = 1
-        const color = metaColorScale[id](initialValue);
+        // const val = initialValue / 1 // Max Similarity Value = 1
+        // const color = metaColorScale[id](initialValue);
+        //
+        // const backgroundSize = `${val * 100}% 100%, ${100 - val * 100}% 100%`;
+        // const backgroundImage = `linear-gradient(${color}, ${color}), linear-gradient(white, white)`;
+        //
+        // return <div className="p-td"
+        //             style={{color: val > 0.8 ? "white" : "black", backgroundRepeat: "no-repeat", backgroundImage: backgroundImage, backgroundSize: backgroundSize}}>{initialValue}</div>;
+        const floatVal = parseFloat(initialValue);
+        const oneDecVal = floatVal.toFixed(2); // "0.8", "0.5", etc.
 
-        const backgroundSize = `${val * 100}% 100%, ${100 - val * 100}% 100%`;
+        // Optionally build color scale:
+        const color = metaColorScale[id](floatVal);
+        const percent = floatVal * 100;
+        const backgroundSize = `${percent}% 100%, ${100 - percent}% 100%`;
         const backgroundImage = `linear-gradient(${color}, ${color}), linear-gradient(white, white)`;
 
-        return <div className="p-td"
-                    style={{color: val > 0.8 ? "white" : "black", backgroundRepeat: "no-repeat", backgroundImage: backgroundImage, backgroundSize: backgroundSize}}>{initialValue}</div>;
+        return (
+            <div className="p-td"
+                 style={{
+                     color: floatVal > 0.8 ? "white" : "black",
+                     backgroundRepeat: "no-repeat",
+                     backgroundImage: backgroundImage,
+                     backgroundSize: backgroundSize
+                 }}>
+                {oneDecVal}
+            </div>
+        );
     }
 
     if (['Source', 'Author', 'Keyword'].indexOf(id) !== -1) {
@@ -302,6 +322,9 @@ function NumberRangeColumnFilter({
     const range = (min !== undefined && max !== undefined) ? [min, max] : defaultRange;
 
     const [value, setValue] = useState(filterValue?.length ? filterValue : range);
+    function valueText(val: number) {
+        return val.toFixed(2);  // format to 2 decimals
+    }
 
     React.useEffect(() => {
         if (filterValue && filterValue.length > 0) {
@@ -310,20 +333,21 @@ function NumberRangeColumnFilter({
     }, [filterValue]);
 
     const [step, marks] = React.useMemo(() => {
-        const step = range[1] > 2 ? 1 : 0.001;
+        const stepVal = range[1] > 2 ? 1 : 0.001;
+        // If you want the marks themselves also to show only 2 decimals:
+        const formatMark = (v) => Number(v.toFixed(2));
         const uniqueMarks = Array.from(new Set([
-            { value: range[0], label: range[0].toString() },
-            { value: value[0], label: value[0].toString() },
-            { value: value[1], label: value[1].toString() },
-            { value: range[1], label: range[1].toString() },
-        ])); // Remove duplicates to ensure unique keys
-
-        return [step, uniqueMarks];
+            { value: range[0], label: formatMark(range[0]).toString() },
+            { value: value[0],  label: formatMark(value[0]).toString() },
+            { value: value[1],  label: formatMark(value[1]).toString() },
+            { value: range[1],  label: formatMark(range[1]).toString() },
+        ]));
+        return [stepVal, uniqueMarks];
     }, [value, range]);
 
-    function valueText(value: number, index: number) {
-        return value != 0 ? `${value.toPrecision(4)}` : '';
-    }
+    // function valueText(value: number, index: number) {
+    //     return value != 0 ? `${value.toPrecision(4)}` : '';
+    // }
 
     return (
         <div style={{marginLeft: 16, marginRight: 16, textAlign: "center"}}
@@ -557,7 +581,12 @@ function DefaultColumnFilter({
         />)
 }
 
-function filterMapping(filter, dataAuthors, dataSources, dataKeywords,setSpinner, columnId, staticMinYear = 1975, staticMaxYear = 2024, staticMinCitationCounts = 0, staticMaxCitationCounts = 1000) {
+function filterMapping(filter, dataAuthors, dataSources, dataKeywords,
+                       setSpinner, columnId, staticMinYear = 1975,
+                       staticMaxYear = 2024, staticMinCitationCounts = 0,
+                       staticMaxCitationCounts = 1000,
+                       similarMinScore=0,
+                       similarMaxScore=1) {
     if (filter === "multiselect") {
         // console.log("Passing dataAuthors to MultiSelectColumnFilter:", dataAuthors);
         // console.log("Passing dataKeywords to MultiSelectColumnFilter:", dataKeywords);
@@ -571,6 +600,20 @@ function filterMapping(filter, dataAuthors, dataSources, dataKeywords,setSpinner
             filter: 'includesValue' };
     } else if (filter === "default") {
         return { Filter: DefaultColumnFilter, filter: 'fuzzyText' };
+    } else if (filter === "range" && columnId === "Sim") {
+        console.log("similarMaxScore from props:", similarMaxScore);
+        console.log("similarMinScore from props:", similarMinScore);
+        return {
+            Filter: (props) => (
+                <NumberRangeColumnFilter
+                    {...props}
+                    // Pass the min/max from “similar” table’s props
+                    min={similarMinScore ?? 0}
+                    max={similarMaxScore ?? 1}
+                />
+            ),
+            filter: 'between',
+        };
     } else if (filter === "range") {
         // Check if the column is Year or CitationCount to apply specific ranges
         const min = columnId === 'Year' ? staticMinYear : columnId === 'CitationCount' ? staticMinCitationCounts : undefined;
@@ -1520,6 +1563,8 @@ export interface SmartTableProps {
     dataSources?: any[];
     dataKeywords?: any[];
     applyLocalFilters?: Function;
+    similarMinScore?: number;
+    similarMaxScore?: number;
 }
 
 export const SmartTable: React.FC<{
@@ -1534,23 +1579,33 @@ export const SmartTable: React.FC<{
         globalFilterValue, updateGlobalFilterValue, scrollToPaperID, addToSelectNodeIDs,
         checkoutPapers, summarizePapers, literatureReviewPapers, embeddingType, hasEmbeddings, openGScholar,
         isInSelectedNodeIDs, loadMoreData, hasMoreData, loadAllData, dataAuthors, dataSources,
-        dataKeywords, staticMinYear,staticMaxYear,staticMinCitationCounts,staticMaxCitationCounts, applyLocalFilters
+        dataKeywords, staticMinYear,staticMaxYear,staticMinCitationCounts,staticMaxCitationCounts,
+         applyLocalFilters,similarMinScore,similarMaxScore
     } = props;
+    console.log("similarMinScore from props:", similarMinScore);
+    console.log("similarMaxScore from props:", similarMaxScore);
+    const minSimilarRef=useRef(similarMinScore);
+    const maxSimilarRef=useRef(similarMaxScore);
     const minYearRef = useRef(staticMinYear);
     const maxYearRef = useRef(staticMaxYear);
     const minCitationCountRef = useRef(staticMinCitationCounts);
     const maxCitationCountRef = useRef(staticMaxCitationCounts);
 
+    const [minSim, setMinSim]=useState(minSimilarRef.current??null);
+    const [maxSim, setMaxSim]=useState(maxSimilarRef.current??null);
     const [minYear, setMinYear] = useState(minYearRef.current ?? null);
     const [maxYear, setMaxYear] = useState(maxYearRef.current ?? null);
     const [minCitationCount, setMinCitationCount] = useState(minCitationCountRef.current ?? null);
     const [maxCitationCount, setMaxCitationCount] = useState(maxCitationCountRef.current ?? null);
 
     useEffect(() => {
+        if (minSimilarRef.current!==undefined) setMinSim(minSimilarRef.current);
+        if (maxSimilarRef.current!==undefined) setMaxSim(maxSimilarRef.current);
         if (minYearRef.current !== undefined) setMinYear(minYearRef.current);
         if (maxYearRef.current !== undefined) setMaxYear(maxYearRef.current);
         if (minCitationCountRef.current !== undefined) setMinCitationCount(minCitationCountRef.current);
         if (maxCitationCountRef.current !== undefined) setMaxCitationCount(maxCitationCountRef.current);
+
     }, []);
     // console.log("minYear:", minYear, "maxYear:", maxYear);
     // console.log("minCitationCount:", minCitationCount, "maxCitationCount:", maxCitationCount);
@@ -1568,36 +1623,51 @@ export const SmartTable: React.FC<{
         console.error("Data is not an array or is undefined:", data);
     }
 
-    const columns = React.useMemo(() => columnIds.map((c) => {
-        // console.log("Column ID:", c);
-        // console.log("Column Widths:", columnWidths[c]);
-        // console.log("Column Filter Type:", columnFilterTypes[c]);
-        const columnHeader = {Header: c, accessor: c};
-        const columnWidth = columnWidths[c];
-        // console.log('columnFilterTypes passed dataSources',dataSources);
-        const columnFilter = filterMapping(
-            columnFilterTypes[c],
-            dataAuthors,
-            dataSources,
-            dataKeywords,
-            setSpinner,
-            c,  // Pass column ID here
-            staticMinYear,
-            staticMaxYear,
-            staticMinCitationCounts,
-            staticMaxCitationCounts
-        );
+    const columns = React.useMemo(() => {
+        return columnIds.map((c) => {
+            let columnHeader = {
+                Header: c,
+                accessor: c,
+            };
 
-        // let columnMeta = {metadata: ''}
-        // if (tableData['metaData'] === undefined) {
-        //   columnMeta = {metadata: ''}
-        // } else {
-        //   columnMeta = {metadata: tableData['metaData'][c]}
-        // }
+            // 2) If the column is Sim, override the accessor so it points to row.score
+            if (c === "Sim") {
+                columnHeader = {
+                    Header: "Sim",
+                    // Instead of "Sim", we read row.score
+                    accessor: row => row.score,
+                };
+            }
+
+            const columnWidth = columnWidths[c];
+            // console.log('columnFilterTypes passed dataSources',dataSources);
+            const columnFilter = filterMapping(
+                columnFilterTypes[c],
+                dataAuthors,
+                dataSources,
+                dataKeywords,
+                setSpinner,
+                c,  // Pass column ID here
+                staticMinYear,
+                staticMaxYear,
+                staticMinCitationCounts,
+                staticMaxCitationCounts,
+                similarMinScore,
+                similarMaxScore,
+            );
 
 
-        return { ...columnHeader, ...columnWidth, ...columnFilter };
-    }), [
+            // let columnMeta = {metadata: ''}
+            // if (tableData['metaData'] === undefined) {
+            //   columnMeta = {metadata: ''}
+            // } else {
+            //   columnMeta = {metadata: tableData['metaData'][c]}
+            // }
+
+
+            return {...columnHeader, ...columnWidth, ...columnFilter};
+        });
+    }, [
         columnIds,
         columnWidths,
         columnFilterTypes,
